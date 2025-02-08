@@ -1,0 +1,65 @@
+<!-- templates/admin.html -->
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-4">管理面板</h2>
+
+<div class="card mb-4">
+    <div class="card-header">所有剪贴板</div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>UID</th>
+                        <th>用户</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for clip in clipboards %}
+                    <tr>
+                        <td><a href="{{ url_for('view_clip', uid=clip.uid) }}">{{ clip.uid }}</a></td>
+                        <td>{{ clip.owner.username }}</td>
+                        <td>{{ clip.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            <a href="{{ url_for('delete', uid=clip.uid) }}" class="btn btn-sm btn-danger">删除</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">所有用户</div>
+    <div class="card-body">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>用户名</th>
+                    <th>注册时间</th>
+                    <th>管理员</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>{{ user.username }}</td>
+                    <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>{{ '是' if user.is_admin else '否' }}</td>
+                    <td>
+                        {% if not user.is_admin %}
+                        <a href="#" class="btn btn-sm btn-warning">设为管理员</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

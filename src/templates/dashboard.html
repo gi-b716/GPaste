@@ -1,0 +1,20 @@
+<!-- templates/dashboard.html -->
+{% extends "base.html" %}
+{% block content %}
+<h2>我的剪贴板</h2>
+<a href="{{ url_for('create') }}" class="btn btn-primary mb-3">新建</a>
+{% for clip in clipboards %}
+<div class="card clipboard-card">
+    <div class="card-body">
+        <h5 class="card-title">
+            <a href="{{ url_for('view_clip', uid=clip.uid) }}">{{ clip.uid }}</a>
+            <small class="text-muted">{{ clip.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+        </h5>
+        <div class="btn-group">
+            <a href="{{ url_for('edit', uid=clip.uid) }}" class="btn btn-sm btn-outline-secondary">编辑</a>
+            <a href="{{ url_for('delete', uid=clip.uid) }}" class="btn btn-sm btn-outline-danger">删除</a>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

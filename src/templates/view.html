@@ -1,0 +1,12 @@
+<!-- templates/view.html -->
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h4>剪贴板 {{ clipboard.uid }}</h4>
+    </div>
+    <div class="card-body markdown-body">
+        <div class="markdown-content">{{ clipboard.content }}</div>
+    </div>
+</div>
+{% endblock %}

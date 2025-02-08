@@ -1,0 +1,27 @@
+<!-- templates/edit.html -->
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <h2 class="mb-4">{{ '编辑' if request.path.startswith('/edit') else '新建' }}剪贴板</h2>
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            <div class="mb-3">
+                {{ form.content.label(class="form-label") }}
+                {{ form.content(class="form-control", rows=10) }}
+            </div>
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">取消</a>
+                <button type="submit" class="btn btn-primary">保存</button>
+            </div>
+        </form>
+        
+        <div class="mt-4">
+            <h4>Markdown 预览</h4>
+            <div class="markdown-body">
+                <div class="markdown-content">{% if form.content.data %}{{ form.content.data }}{% endif %}</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
