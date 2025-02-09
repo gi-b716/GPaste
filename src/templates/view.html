@@ -1,12 +1,58 @@
 <!-- templates/view.html -->
 {% extends "base.html" %}
 {% block content %}
-<div class="card">
-    <div class="card-header">
-        <h4>剪贴板 {{ clipboard.uid }}</h4>
-    </div>
-    <div class="card-body markdown-body">
-        <div class="markdown-content">{{ clipboard.content }}</div>
+<div class="container">
+    <div class="card mt-4">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">剪贴板 {{ clipboard.uid }}</h4>
+                <span class="badge bg-{{ 'success' if clipboard.is_public else 'warning' }}">
+                    {{ '公开' if clipboard.is_public else '私有' }}
+                </span>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <small class="text-muted">
+                        作者：{{ clipboard.owner.username }}
+                    </small>
+                </div>
+                <div class="col-md-6 text-end">
+                    <small class="text-muted">
+                        创建于：{{ moment(clipboard.created_at).format('YYYY-MM-DD HH:mm:SS') }}
+                    </small>
+                </div>
+            </div>
+            
+            <div class="markdown-body">
+                <div class="markdown-content">{{ clipboard.content }}</div>
+            </div>
+        </div>
+        
+        {% if is_owner %}
+        <div class="card-footer">
+            <div class="btn-group">
+                <a href="{{ url_for('edit', uid=clipboard.uid) }}" 
+                   class="btn btn-outline-primary">编辑</a>
+                <form action="{{ url_for('delete', uid=clipboard.uid) }}" 
+                      method="POST"
+                      onsubmit="return confirm('确定删除此剪贴板吗？');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-outline-danger">删除</button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5>Markdown源码</h5>
+            </div>
+            <div class="card-body">
+                <pre style="background: #f8f9fa; padding: 15px; border-radius: 5px; max-height: 400px; overflow: auto;">{{ clipboard.content }}</pre>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

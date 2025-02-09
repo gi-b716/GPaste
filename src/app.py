@@ -5,9 +5,10 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 from flask_bcrypt import Bcrypt
 from flask_wtf import FlaskForm
 from flask_wtf.csrf import CSRFProtect
+from flask_moment import Moment
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from wtforms import StringField, PasswordField, TextAreaField
+from wtforms import StringField, PasswordField, TextAreaField, BooleanField, SelectField
 from wtforms.validators import DataRequired, Length
 import uuid
 import os
@@ -15,7 +16,9 @@ from datetime import datetime
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.urandom(24)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:65399306@localhost/clipboard_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://{0}:{1}@localhost/clipboard_db'.format(
+    os.environ['SQL_USERNAME'], os.environ['SQL_PASSWORD']
+)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 limiter = Limiter(
@@ -25,6 +28,8 @@ limiter = Limiter(
 )
 
 csrf = CSRFProtect(app)
+
+moment = Moment(app)
 
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
@@ -46,7 +51,9 @@ class Clipboard(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     uid = db.Column(db.String(36), unique=True)
     content = db.Column(db.Text)
+    is_public = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
 
 # 表单类
@@ -61,6 +68,7 @@ class RegistrationForm(FlaskForm):
 
 class ClipboardForm(FlaskForm):
     content = TextAreaField('内容', validators=[DataRequired()])
+    is_public = BooleanField('公开剪贴板', default=True)
 
 class ProfileForm(FlaskForm):
     username = StringField('用户名', validators=[DataRequired(), Length(max=50)])
@@ -130,7 +138,8 @@ def create():
         new_clip = Clipboard(
             uid=str(uuid.uuid4()),
             content=form.content.data,
-            user_id=current_user.id
+            user_id=current_user.id,
+            is_public=form.is_public.data
         )
         db.session.add(new_clip)
         db.session.commit()
@@ -141,7 +150,7 @@ def create():
 @login_required
 def edit(uid):
     clipboard = Clipboard.query.filter_by(uid=uid).first_or_404()
-    if clipboard.owner != current_user and not current_user.is_admin:
+    if current_user.id != clipboard.user_id and not current_user.is_admin:
         abort(403)
     form = ClipboardForm(obj=clipboard)
     if form.validate_on_submit():
@@ -150,11 +159,11 @@ def edit(uid):
         return redirect(url_for('dashboard'))
     return render_template('edit.html', form=form)
 
-@app.route('/delete/<uid>')
+@app.route('/delete/<uid>', methods=['GET', 'POST'])
 @login_required
 def delete(uid):
     clipboard = Clipboard.query.filter_by(uid=uid).first_or_404()
-    if clipboard.owner != current_user and not current_user.is_admin:
+    if current_user.id != clipboard.user_id and not current_user.is_admin:
         abort(403)
     db.session.delete(clipboard)
     db.session.commit()
@@ -164,7 +173,18 @@ def delete(uid):
 @limiter.limit("30 per minute")
 def view_clip(uid):
     clipboard = Clipboard.query.filter_by(uid=uid).first_or_404()
-    return render_template('view.html', clipboard=clipboard)
+    
+    # 权限检查
+    if not clipboard.is_public and \
+       (not current_user.is_authenticated or 
+        (current_user.id != clipboard.user_id and not current_user.is_admin)):
+        abort(403)
+    
+    return render_template('view.html', 
+                         clipboard=clipboard,
+                         is_owner=current_user.is_authenticated and 
+                                  (current_user.id == clipboard.user_id or 
+                                   current_user.is_admin))
 
 @app.route('/admin')
 @login_required

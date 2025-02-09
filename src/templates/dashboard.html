@@ -8,7 +8,7 @@
     <div class="card-body">
         <h5 class="card-title">
             <a href="{{ url_for('view_clip', uid=clip.uid) }}">{{ clip.uid }}</a>
-            <small class="text-muted">{{ clip.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+            <small class="text-muted">{{ moment(clip.created_at).format('YYYY-MM-DD HH:mm') }}</small>
         </h5>
         <div class="btn-group">
             <a href="{{ url_for('edit', uid=clip.uid) }}" class="btn btn-sm btn-outline-secondary">编辑</a>

@@ -9,9 +9,7 @@
         <form action="{{ url_for('delete_all_clipboards') }}" method="POST" 
               onsubmit="return confirm('确定要删除所有剪贴板吗？此操作不可恢复！');">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-danger">
-                <i class="bi bi-trash3"></i> 删除所有剪贴板
-            </button>
+            <button type="submit" class="btn btn-danger">删除所有剪贴板</button>
         </form>
     </div>
 </div>
@@ -34,7 +32,7 @@
                     <tr>
                         <td><a href="{{ url_for('view_clip', uid=clip.uid) }}">{{ clip.uid }}</a></td>
                         <td>{{ clip.owner.username }}</td>
-                        <td>{{ clip.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>{{ moment(clip.created_at).format('YYYY-MM-DD HH:mm') }}</td>
                         <td>
                             <a href="{{ url_for('delete', uid=clip.uid) }}" class="btn btn-sm btn-danger">删除</a>
                         </td>
@@ -62,7 +60,7 @@
                 {% for user in users %}
                 <tr>
                     <td>{{ user.username }}</td>
-                    <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>{{ moment(user.created_at).format('YYYY-MM-DD HH:mm') }}</td>
                     <td>{{ '是' if user.is_admin else '否' }}</td>
                     <td>
                         <div class="btn-group">
