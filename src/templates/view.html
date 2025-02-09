@@ -45,14 +45,30 @@
         </div>
         {% endif %}
 
-        <div class="card mt-4">
-            <div class="card-header">
+        <div class="card mt-4" id="source-code">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h5>Markdown源码</h5>
+                <button class="btn btn-sm btn-outline-primary" id="copy-source" onclick="copySource()">复制</button>
             </div>
             <div class="card-body">
                 <pre style="background: #f8f9fa; padding: 15px; border-radius: 5px; max-height: 400px; overflow: auto;">{{ clipboard.content }}</pre>
             </div>
         </div>
+        
+        <script>
+        function copySource() {
+            const el = document.getElementById('source-code');
+            console.log(el);
+            navigator.clipboard.writeText(el.innerText.substr(14)).then(() => {
+                const btn = document.getElementById('copy-source');
+                console.log(btn);
+                btn.innerHTML = '已复制';
+                setTimeout(() => {
+                    btn.innerHTML = '复制';
+                }, 2000);
+            });
+        }
+        </script>
     </div>
 </div>
 {% endblock %}
