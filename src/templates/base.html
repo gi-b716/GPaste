@@ -33,6 +33,26 @@
             line-height: 1.5;
             border: 1px solid #dee2e6;
         }
+        .markdown-preview {
+            overflow-y: auto;
+            height: calc(100vh - 300px);
+            padding: 15px;
+        }
+
+        #markdown-editor {
+            font-family: Monaco, Consolas, "Courier New", monospace;
+            font-size: 0.9em;
+            line-height: 1.5;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px !important;
+        }
+
+        @media (max-width: 768px) {
+            .markdown-preview {
+                height: 400px;
+            }
+        }
     </style>
     {{ moment.include_moment() }}
     {{ moment.locale(auto_detect=True) }}

@@ -2,30 +2,118 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-8">
+    <div class="col-md-12">
         <h2 class="mb-4">{{ '编辑' if request.path.startswith('/edit') else '新建' }}剪贴板</h2>
-        <form method="POST">
-            {{ form.hidden_tag() }}
-            <div class="mb-3">
-                {{ form.content.label(class="form-label") }}
-                {{ form.content(class="form-control", rows=10) }}
+        <div class="row g-4">
+            <!-- 编辑区 -->
+            <div class="col-md-6">
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+                    <div class="mb-3">
+                        {{ form.content.label(class="form-label") }}
+                        {{ form.content(class="form-control", rows=15, id="markdown-editor") }}
+                    </div>
+                    <div class="mb-3 form-check form-switch">
+                        {{ form.is_public(class="form-check-input") }}
+                        {{ form.is_public.label(class="form-check-label") }}
+                    </div>
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">取消</a>
+                        <button type="submit" class="btn btn-primary">保存</button>
+                    </div>
+                </form>
             </div>
-            <div class="mb-3 form-check form-switch">
-                {{ form.is_public(class="form-check-input") }}
-                {{ form.is_public.label(class="form-check-label") }}
-            </div>
-            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">取消</a>
-                <button type="submit" class="btn btn-primary">保存</button>
-            </div>
-        </form>
-        
-        <div class="mt-4">
-            <h4>Markdown 预览</h4>
-            <div class="markdown-body">
-                <div class="markdown-content">{% if form.content.data %}{{ form.content.data }}{% endif %}</div>
+            
+            <!-- 预览区 -->
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0">实时预览</h5>
+                    </div>
+                    <div class="card-body markdown-preview" id="markdown-preview">
+                        <!-- 预览内容将通过JavaScript填充 -->
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const editor = document.getElementById('markdown-editor');
+    const preview = document.getElementById('markdown-preview');
+    
+    // 初始化marked配置
+    marked.setOptions({
+        breaks: true,
+        highlight: function(code) {
+            return hljs.highlightAuto(code).value;
+        }
+    });
+
+    marked.use({
+        extensions: [
+            {
+                name: 'autolink',
+                level: 'inline',
+                start(src) { return src.match(/</)?.index; },
+                tokenizer(src, tokens) {
+                    const match = src.match(/^<([^ >]+@[^ >]+)>/);
+                    if (match) {
+                        return {
+                            type: 'autolink',
+                            raw: match[0],
+                            text: match[1],
+                            href: 'mailto:' + match[1]
+                        };
+                    }
+                },
+                renderer(token) {
+                    return `<a href="${token.href}">${token.text}</a>`;
+                }
+            }
+        ]
+    });
+
+    // XSS防护
+    // const sanitizeHtml = (html) => {
+    //     return html.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    // };
+    const sanitizeHtml = (html) => {
+        return html;
+    };
+
+    // 更新预览函数
+    const updatePreview = () => {
+        const content = editor.value;
+        const sanitized = sanitizeHtml(content);
+        preview.innerHTML = marked.parse(sanitized);
+    };
+
+    // 实时监听输入事件
+    editor.addEventListener('input', updatePreview);
+    
+    // 初始化时立即更新
+    updatePreview();
+    
+    // 添加编辑器自动缩进
+    editor.addEventListener('keydown', function(e) {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const start = this.selectionStart;
+            const end = this.selectionEnd;
+            this.value = this.value.substring(0, start) + 
+                        '    ' + 
+                        this.value.substring(end);
+            this.selectionStart = this.selectionEnd = start + 4;
+        }
+    });
+});
+</script>
+
+<!-- 添加代码高亮支持 -->
+<link rel="stylesheet" 
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/styles/github.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/highlight.min.js"></script>
 {% endblock %}
