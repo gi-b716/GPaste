@@ -30,6 +30,7 @@ db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
+login_manager.login_message_category = 'info'
 login_manager.login_message = "请先登录以访问该页面。"
 
 # 数据库模型
@@ -60,6 +61,12 @@ class RegistrationForm(FlaskForm):
 class ClipboardForm(FlaskForm):
     content = TextAreaField('内容', validators=[DataRequired()])
 
+class ProfileForm(FlaskForm):
+    username = StringField('用户名', validators=[DataRequired(), Length(max=50)])
+    current_password = PasswordField('当前密码（仅修改密码时需要）')
+    new_password = PasswordField('新密码')
+    confirm_password = PasswordField('确认新密码')
+
 # 登录管理
 @login_manager.user_loader
 def load_user(user_id):
@@ -86,7 +93,7 @@ def login():
         if user and bcrypt.check_password_hash(user.password, form.password.data):
             login_user(user)
             return redirect(url_for('dashboard'))
-        flash('无效的用户名或密码')
+        flash('无效的用户名或密码', 'danger')
     return render_template('login.html', form=form)
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -98,7 +105,7 @@ def register():
         user = User(username=form.username.data, password=hashed_pw)
         db.session.add(user)
         db.session.commit()
-        flash('注册成功，请登录')
+        flash('注册成功，请登录', 'success')
         return redirect(url_for('login'))
     return render_template('register.html', form=form)
 
@@ -169,7 +176,86 @@ def set_admin(user_id):
     user = User.query.get_or_404(user_id)
     user.is_admin = True
     db.session.commit()
+    flash(f'已成功将 {user.username} 设为管理员', 'success')
     return redirect(url_for('admin'))
+
+@app.route('/profile', methods=['GET', 'POST'])
+@login_required
+def profile():
+    form = ProfileForm(obj=current_user)
+    
+    if form.validate_on_submit():
+        # 修改用户名
+        if form.username.data != current_user.username:
+            if User.query.filter_by(username=form.username.data).first():
+                flash('用户名已存在', 'danger')
+                return redirect(url_for('profile'))
+            current_user.username = form.username.data
+        
+        # 修改密码
+        if form.new_password.data:
+            if not bcrypt.check_password_hash(current_user.password, form.current_password.data):
+                flash('当前密码错误', 'danger')
+                return redirect(url_for('profile'))
+            if form.new_password.data != form.confirm_password.data:
+                flash('新密码不一致', 'danger')
+                return redirect(url_for('profile'))
+            current_user.password = bcrypt.generate_password_hash(form.new_password.data).decode('utf-8')
+        
+        db.session.commit()
+        flash('资料更新成功', 'success')
+        return redirect(url_for('dashboard'))
+    
+    return render_template('profile.html', form=form)
+
+@app.route('/delete_user/<int:user_id>', methods=['POST'])
+@login_required
+def delete_user(user_id):
+    target_user = User.query.get_or_404(user_id)
+    # 权限验证
+    if not (current_user.is_admin or current_user.id == user_id):
+        abort(403)
+    # 删除关联剪贴板
+    Clipboard.query.filter_by(user_id=user_id).delete()
+    # 删除用户
+    db.session.delete(target_user)
+    db.session.commit()
+    if current_user.id == user_id:
+        logout_user()
+        flash('账户已删除', 'success')
+        return redirect(url_for('login'))
+    else:
+        flash('用户已删除', 'success')
+        return redirect(url_for('admin'))
+
+@app.route('/admin/edit_user/<int:user_id>', methods=['GET', 'POST'])
+@login_required
+def edit_user(user_id):
+    if not current_user.is_admin:
+        abort(403)
+    
+    target_user = User.query.get_or_404(user_id)
+    form = ProfileForm(obj=target_user)
+    
+    if form.validate_on_submit():
+        # 管理员无需验证原密码
+        if form.username.data != target_user.username:
+            if User.query.filter_by(username=form.username.data).first():
+                flash('用户名已存在', 'danger')
+                return redirect(url_for('edit_user', user_id=user_id))
+            target_user.username = form.username.data
+        
+        if form.new_password.data:
+            if form.new_password.data != form.confirm_password.data:
+                flash('新密码不一致', 'danger')
+                return redirect(url_for('edit_user', user_id=user_id))
+            target_user.password = bcrypt.generate_password_hash(form.new_password.data).decode('utf-8')
+        
+        db.session.commit()
+        flash('用户信息已更新', 'success')
+        return redirect(url_for('admin'))
+    
+    return render_template('edit_user.html', form=form, target_user=target_user)
 
 @app.errorhandler(429)
 def ratelimit_error(e):

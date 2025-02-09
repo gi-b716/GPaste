@@ -52,12 +52,22 @@
                     <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                     <td>{{ '是' if user.is_admin else '否' }}</td>
                     <td>
-                        {% if not user.is_admin %}
-                        <form action="{{ url_for('set_admin', user_id=user.id) }}" method="POST">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="btn btn-sm btn-warning">设为管理员</button>
-                        </form>
-                        {% endif %}
+                        <div class="btn-group">
+                            <a href="{{ url_for('edit_user', user_id=user.id) }}" 
+                               class="btn btn-sm btn-outline-primary">编辑</a>
+                            <form action="{{ url_for('delete_user', user_id=user.id) }}" 
+                                  method="POST" 
+                                  onsubmit="return confirm('确定要删除该用户吗？');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">删除</button>
+                            </form>
+                            {% if not user.is_admin %}
+                            <form action="{{ url_for('set_admin', user_id=user.id) }}" method="POST">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-sm btn-warning">设为管理员</button>
+                            </form>
+                            {% endif %}
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
