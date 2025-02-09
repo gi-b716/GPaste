@@ -57,6 +57,7 @@ class LoginForm(FlaskForm):
 class RegistrationForm(FlaskForm):
     username = StringField('用户名', validators=[DataRequired(), Length(max=50)])
     password = PasswordField('密码', validators=[DataRequired()])
+    confirm_password = PasswordField('确认密码', validators=[DataRequired()])
 
 class ClipboardForm(FlaskForm):
     content = TextAreaField('内容', validators=[DataRequired()])
@@ -101,6 +102,12 @@ def login():
 def register():
     form = RegistrationForm()
     if form.validate_on_submit():
+        if User.query.filter_by(username=form.username.data).first():
+            flash('用户名已存在', 'danger')
+            return redirect(url_for('register'))
+        if form.password.data != form.confirm_password.data:
+            flash('密码不一致', 'danger')
+            return redirect(url_for('register'))
         hashed_pw = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
         user = User(username=form.username.data, password=hashed_pw)
         db.session.add(user)
