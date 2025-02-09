@@ -1,0 +1,12 @@
+<!-- templates/rate_limit.html -->
+{% extends "base.html" %}
+{% block content %}
+<div class="alert alert-danger mt-5" style="max-width: 600px; margin: 0 auto;">
+    <h4 class="alert-heading">操作被限制！</h4>
+    <p>{{ message }}</p>
+    <hr>
+    <p class="mb-0">
+        <a href="{{ url_for('index') }}" class="btn btn-primary">返回首页</a>
+    </p>
+</div>
+{% endblock %}

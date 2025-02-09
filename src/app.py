@@ -1,9 +1,12 @@
 # app.py - 主程序文件
-from flask import Flask, render_template, redirect, url_for, request, flash
+from flask import Flask, render_template, redirect, url_for, request, flash, abort
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_bcrypt import Bcrypt
 from flask_wtf import FlaskForm
+from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from wtforms import StringField, PasswordField, TextAreaField
 from wtforms.validators import DataRequired, Length
 import uuid
@@ -15,10 +18,19 @@ app.config['SECRET_KEY'] = os.urandom(24)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:65399306@localhost/clipboard_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+limiter = Limiter(
+    app=app,
+    key_func=lambda: current_user.id if current_user.is_authenticated else get_remote_address(),
+    default_limits=["10 per second"]
+)
+
+csrf = CSRFProtect(app)
+
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
+login_manager.login_message = "请先登录以访问该页面。"
 
 # 数据库模型
 class User(UserMixin, db.Model):
@@ -66,6 +78,7 @@ def dashboard():
     return render_template('dashboard.html', clipboards=clipboards)
 
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("60 per minute")
 def login():
     form = LoginForm()
     if form.validate_on_submit():
@@ -77,6 +90,7 @@ def login():
     return render_template('login.html', form=form)
 
 @app.route('/register', methods=['GET', 'POST'])
+@limiter.limit("20 per minute")
 def register():
     form = RegistrationForm()
     if form.validate_on_submit():
@@ -133,6 +147,7 @@ def delete(uid):
     return redirect(url_for('dashboard'))
 
 @app.route('/clip/<uid>')
+@limiter.limit("30 per minute")
 def view_clip(uid):
     clipboard = Clipboard.query.filter_by(uid=uid).first_or_404()
     return render_template('view.html', clipboard=clipboard)
@@ -155,6 +170,11 @@ def set_admin(user_id):
     user.is_admin = True
     db.session.commit()
     return redirect(url_for('admin'))
+
+@app.errorhandler(429)
+def ratelimit_error(e):
+    return render_template('rate_limit.html', 
+                         message="请求过于频繁，请稍后再试"), 429
 
 if __name__ == '__main__':
     app.run(debug=True)
