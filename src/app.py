@@ -228,6 +228,38 @@ def delete_user(user_id):
         flash('用户已删除', 'success')
         return redirect(url_for('admin'))
 
+@app.route('/toggle_admin/<int:user_id>', methods=['POST'])
+@login_required
+def toggle_admin(user_id):
+    if not current_user.is_admin:
+        abort(403)
+    
+    user = User.query.get_or_404(user_id)
+    if user.id == current_user.id:
+        flash('不能修改自己的管理员状态', 'danger')
+    else:
+        user.is_admin = not user.is_admin
+        db.session.commit()
+        flash(f'已{"取消" if not user.is_admin else "设置"} {user.username} 的管理员权限', 'success')
+    
+    return redirect(url_for('admin'))
+
+@app.route('/delete_all_clipboards', methods=['POST'])
+@login_required
+def delete_all_clipboards():
+    if not current_user.is_admin:
+        abort(403)
+    
+    try:
+        num_deleted = Clipboard.query.delete()
+        db.session.commit()
+        flash(f'已删除全部 {num_deleted} 个剪贴板', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash('删除失败: ' + str(e), 'danger')
+    
+    return redirect(url_for('admin'))
+
 @app.route('/admin/edit_user/<int:user_id>', methods=['GET', 'POST'])
 @login_required
 def edit_user(user_id):

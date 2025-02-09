@@ -3,6 +3,19 @@
 {% block content %}
 <h2 class="mb-4">管理面板</h2>
 
+<div class="card mb-4 border-danger">
+    <div class="card-header bg-danger text-white">批量操作</div>
+    <div class="card-body">
+        <form action="{{ url_for('delete_all_clipboards') }}" method="POST" 
+              onsubmit="return confirm('确定要删除所有剪贴板吗？此操作不可恢复！');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-danger">
+                <i class="bi bi-trash3"></i> 删除所有剪贴板
+            </button>
+        </form>
+    </div>
+</div>
+
 <div class="card mb-4">
     <div class="card-header">所有剪贴板</div>
     <div class="card-body">
@@ -61,12 +74,10 @@
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="btn btn-sm btn-outline-danger">删除</button>
                             </form>
-                            {% if not user.is_admin %}
-                            <form action="{{ url_for('set_admin', user_id=user.id) }}" method="POST">
+                            <form action="{{ url_for('toggle_admin', user_id=user.id) }}" method="POST">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="btn btn-sm btn-warning">设为管理员</button>
+                                <button type="submit" class="btn btn-sm btn-warning">{{ '取消管理员' if user.is_admin else '设为管理员' }}</button>
                             </form>
-                            {% endif %}
                         </div>
                     </td>
                 </tr>
