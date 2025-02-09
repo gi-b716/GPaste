@@ -49,10 +49,11 @@
                 {% for user in users %}
                 <tr>
                     <td>{{ user.username }}</td>
-                    <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else '未知' }}</td>
                     <td>{{ '是' if user.is_admin else '否' }}</td>
                     <td>
                         {% if not user.is_admin %}
+                        <form action="{{ url_for('set_admin', user_id=user.id) }}" method="POST" style="display:inline;"></form>
                         <a href="#" class="btn btn-sm btn-warning">设为管理员</a>
                         {% endif %}
                     </td>

@@ -26,6 +26,7 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(50), unique=True)
     password = db.Column(db.String(60))
     is_admin = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 添加created_at字段
     clipboards = db.relationship('Clipboard', backref='owner', lazy=True)
 
 class Clipboard(db.Model):
@@ -144,6 +145,16 @@ def admin():
     clipboards = Clipboard.query.all()
     users = User.query.all()
     return render_template('admin.html', clipboards=clipboards, users=users)
+
+@app.route('/set_admin/<int:user_id>', methods=['POST'])
+@login_required
+def set_admin(user_id):
+    if not current_user.is_admin:
+        abort(403)
+    user = User.query.get_or_404(user_id)
+    user.is_admin = True
+    db.session.commit()
+    return redirect(url_for('admin'))
 
 if __name__ == '__main__':
     app.run(debug=True)
