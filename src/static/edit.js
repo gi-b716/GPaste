@@ -46,19 +46,29 @@
             const cleanContent = DOMPurify.sanitize(content);
             
             // 2. 转换 Markdown
-            const htmlContent = marked.parse(cleanContent);
+            const htmlContent = marked.parse(cleanContent, {
+                breaks: true,
+                highlight: function(code, lang) {
+                    const validLang = hljs.getLanguage(lang) ? lang : 'plaintext';
+                    return hljs.highlight(code, { language: validLang }).value;
+                }
+            });
             
             // 3. 更新预览内容
             previewContainer.innerHTML = htmlContent;
             
-            // 4. 渲染数学公式
-            renderMathInElement(previewContainer, {
-                delimiters: [
-                    { left: '$$', right: '$$', display: true },  // 行间公式
-                    { left: '$', right: '$', display: false }   // 行内公式
-                ],
-                throwOnError: false
-            });
+            // 4. 渲染数学公式（确保只渲染一次）
+            if (window.renderMathInElement) {
+                renderMathInElement(previewContainer, {
+                    delimiters: [
+                        { left: '$$', right: '$$', display: true },  // 行间公式
+                        { left: '$', right: '$', display: false }   // 行内公式
+                    ],
+                    throwOnError: false
+                });
+            } else {
+                console.warn('KaTeX 的 auto-render 扩展未加载');
+            }
             
             // 5. 高亮代码块
             document.querySelectorAll('pre code').forEach((block) => {
@@ -66,6 +76,7 @@
             });
         } catch (error) {
             console.error('预览更新失败:', error);
+            previewContainer.innerHTML = '<div class="alert alert-danger">预览渲染错误</div>';
         }
     }
 })();
