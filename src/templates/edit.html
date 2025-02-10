@@ -8,7 +8,7 @@
             <div id="editor-container" style="height: 100%; border: 1px solid #dee2e6;"></div>
             <form method="POST" id="clipboard-form">
                 {{ form.hidden_tag() }}
-                <textarea id="hidden-content" name="content" style="display:none;"></textarea>
+                <textarea id="hidden-content" name="content" style="display:none;">{{ form.content.data }}</textarea>
                 
                 <!-- 公开设置和操作按钮 -->
                 <div class="mt-3">

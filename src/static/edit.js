@@ -18,8 +18,12 @@
     });
 
     require(['vs/editor/editor.main'], function() {
+        // 获取隐藏的 textarea 中的内容
+        const initialContent = document.getElementById('hidden-content').value;
+
+        // 初始化 Monaco Editor
         const editor = monaco.editor.create(document.getElementById('editor-container'), {
-            value: document.getElementById('hidden-content').value,
+            value: initialContent, // 使用已有的内容初始化编辑器
             language: 'markdown',
             theme: 'vs-dark',
             minimap: { enabled: false },
@@ -34,7 +38,7 @@
         });
 
         // 初始预览
-        updatePreview(editor.getValue());
+        updatePreview(initialContent);
     });
 
     // 实时预览更新函数
@@ -43,7 +47,8 @@
             const previewContainer = document.getElementById('preview-container');
             
             // 1. 消毒内容
-            const cleanContent = DOMPurify.sanitize(content);
+            // const cleanContent = DOMPurify.sanitize(content);
+            const cleanContent = content;
             
             // 2. 转换 Markdown
             const htmlContent = marked.parse(cleanContent, {
@@ -76,7 +81,6 @@
             });
         } catch (error) {
             console.error('预览更新失败:', error);
-            previewContainer.innerHTML = '<div class="alert alert-danger">预览渲染错误</div>';
         }
     }
 })();
