@@ -1,119 +1,115 @@
 <!-- templates/edit.html -->
 {% extends "base.html" %}
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-12">
-        <h2 class="mb-4">{{ '编辑' if request.path.startswith('/edit') else '新建' }}剪贴板</h2>
-        <div class="row g-4">
-            <!-- 编辑区 -->
-            <div class="col-md-6">
-                <form method="POST">
-                    {{ form.hidden_tag() }}
-                    <div class="mb-3">
-                        {{ form.content.label(class="form-label") }}
-                        {{ form.content(class="form-control", rows=15, id="markdown-editor") }}
-                    </div>
-                    <div class="mb-3 form-check form-switch">
+<div class="container-fluid">
+    <div class="row g-4">
+        <!-- 编辑器容器 -->
+        <div class="col-md-6" style="height: 70vh;">
+            <div id="editor-container" style="height: 100%; border: 1px solid #dee2e6;"></div>
+            <form method="POST" id="clipboard-form">
+                {{ form.hidden_tag() }}
+                <textarea id="hidden-content" name="content" style="display:none;"></textarea>
+                
+                <!-- 公开设置和操作按钮 -->
+                <div class="mt-3">
+                    <div class="form-check form-switch">
                         {{ form.is_public(class="form-check-input") }}
                         {{ form.is_public.label(class="form-check-label") }}
                     </div>
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-3">
                         <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">取消</a>
                         <button type="submit" class="btn btn-primary">保存</button>
                     </div>
-                </form>
-            </div>
-            
-            <!-- 预览区 -->
-            <div class="col-md-6">
-                <div class="card h-100">
-                    <div class="card-header">
-                        <h5 class="mb-0">实时预览</h5>
-                    </div>
-                    <div class="card-body markdown-preview" id="markdown-preview">
-                        <!-- 预览内容将通过JavaScript填充 -->
-                    </div>
                 </div>
+            </form>
+        </div>
+        
+        <!-- 预览区域 -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">实时预览</h5>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="toggleFullscreen()">
+                        <i class="bi bi-arrows-fullscreen"></i>
+                    </button>
+                </div>
+                <div id="preview-container" class="card-body markdown-preview" 
+                     style="height: calc(70vh - 60px); overflow: auto;"></div>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Monaco Editor 初始化 -->
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const editor = document.getElementById('markdown-editor');
-    const preview = document.getElementById('markdown-preview');
-    
-    // 初始化marked配置
-    marked.setOptions({
-        breaks: true,
-        highlight: function(code) {
-            return hljs.highlightAuto(code).value;
-        }
+require.config({
+    paths: {
+        'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs'
+    }
+});
+
+require(['vs/editor/editor.main'], function() {
+    const editor = monaco.editor.create(document.getElementById('editor-container'), {
+        value: `{{ form.content.data | safe }}`,
+        language: 'markdown',
+        theme: 'vs-dark',
+        minimap: { enabled: false },
+        automaticLayout: true
     });
 
-    marked.use({
-        extensions: [
-            {
-                name: 'autolink',
-                level: 'inline',
-                start(src) { return src.match(/</)?.index; },
-                tokenizer(src, tokens) {
-                    const match = src.match(/^<([^ >]+@[^ >]+)>/);
-                    if (match) {
-                        return {
-                            type: 'autolink',
-                            raw: match[0],
-                            text: match[1],
-                            href: 'mailto:' + match[1]
-                        };
-                    }
-                },
-                renderer(token) {
-                    return `<a href="${token.href}">${token.text}</a>`;
-                }
-            }
-        ]
+    // 同步内容到隐藏字段
+    editor.getModel().onDidChangeContent(() => {
+        const content = editor.getValue();
+        document.getElementById('hidden-content').value = content;
+        updatePreview(content);
     });
 
-    // XSS防护
-    // const sanitizeHtml = (html) => {
-    //     return html.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    // };
-    const sanitizeHtml = (html) => {
-        return html;
-    };
-
-    // 更新预览函数
-    const updatePreview = () => {
-        const content = editor.value;
-        const sanitized = sanitizeHtml(content);
-        preview.innerHTML = marked.parse(sanitized);
-    };
-
-    // 实时监听输入事件
-    editor.addEventListener('input', updatePreview);
-    
-    // 初始化时立即更新
-    updatePreview();
-    
-    // 添加编辑器自动缩进
-    editor.addEventListener('keydown', function(e) {
-        if (e.key === 'Tab') {
-            e.preventDefault();
-            const start = this.selectionStart;
-            const end = this.selectionEnd;
-            this.value = this.value.substring(0, start) + 
-                        '    ' + 
-                        this.value.substring(end);
-            this.selectionStart = this.selectionEnd = start + 4;
-        }
-    });
+    // 初始预览
+    updatePreview(editor.getValue());
 });
 </script>
 
-<!-- 添加代码高亮支持 -->
-<link rel="stylesheet" 
-        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/styles/github.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/highlight.min.js"></script>
+<!-- 实时预览脚本 -->
+<script>
+function updatePreview(content) {
+    try {
+        const previewContainer = document.getElementById('preview-container');
+        
+        // 1. 消毒内容
+        const cleanContent = DOMPurify.sanitize(content);
+        
+        // 2. 转换 Markdown
+        const htmlContent = marked.parse(cleanContent);
+        
+        // 3. 更新预览内容
+        previewContainer.innerHTML = htmlContent;
+        
+        // 4. 渲染数学公式
+        renderMathInElement(previewContainer, {
+            delimiters: [
+                { left: '$$', right: '$$', display: true },  // 行间公式
+                { left: '$', right: '$', display: false }   // 行内公式
+            ],
+            throwOnError: false
+        });
+        
+        // 5. 高亮代码块
+        document.querySelectorAll('pre code').forEach((block) => {
+            hljs.highlightElement(block);
+        });
+    } catch (error) {
+        console.error('预览更新失败:', error);
+        previewContainer.innerHTML = '<div class="alert alert-danger">预览渲染错误</div>';
+    }
+}
+
+// 全屏切换功能
+window.toggleFullscreen = function() {
+    const preview = document.getElementById('preview-container');
+    preview.style.height = preview.style.height === '80vh' 
+        ? 'calc(70vh - 60px)' 
+        : '80vh';
+}
+</script>
 {% endblock %}
