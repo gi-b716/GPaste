@@ -38,6 +38,8 @@ login_manager.login_view = 'login'
 login_manager.login_message_category = 'info'
 login_manager.login_message = "请先登录以访问该页面。"
 
+ROOT_USER = [1]
+
 # 数据库模型
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -265,9 +267,12 @@ def toggle_admin(user_id):
     if user.id == current_user.id:
         flash('不能修改自己的管理员状态', 'danger')
     else:
-        user.is_admin = not user.is_admin
-        db.session.commit()
-        flash(f'已{"取消" if not user.is_admin else "设置"} {user.username} 的管理员权限', 'success')
+        if user.id in ROOT_USER:
+            flash('无法修改此用户的管理员状态', 'danger')
+        else:
+            user.is_admin = not user.is_admin
+            db.session.commit()
+            flash(f'已{"取消" if not user.is_admin else "设置"} {user.username} 的管理员权限', 'success')
     
     return redirect(url_for('admin'))
 
@@ -322,4 +327,4 @@ def ratelimit_error(e):
                          message="请求过于频繁，请稍后再试"), 429
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', debug=True)
