@@ -148,6 +148,10 @@ def create():
         return redirect(url_for('dashboard'))
     return render_template('edit.html', form=form)
 
+@app.route('/test')
+def test():
+    return render_template('test.html')
+
 @app.route('/edit/<uid>', methods=['GET', 'POST'])
 @login_required
 def edit(uid):

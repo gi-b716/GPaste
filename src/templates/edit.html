@@ -28,11 +28,8 @@
         <!-- 预览区域 -->
         <div class="col-md-6">
             <div class="card h-100">
-                <div class="card-header d-flex justify-content-between align-items-center">
+                <div class="card-header">
                     <h5 class="mb-0">实时预览</h5>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="toggleFullscreen()">
-                        <i class="bi bi-arrows-fullscreen"></i>
-                    </button>
                 </div>
                 <div id="preview-container" class="card-body markdown-preview" 
                      style="height: calc(70vh - 60px); overflow: auto;"></div>
@@ -41,75 +38,6 @@
     </div>
 </div>
 
-<!-- Monaco Editor 初始化 -->
-<script>
-require.config({
-    paths: {
-        'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs'
-    }
-});
-
-require(['vs/editor/editor.main'], function() {
-    const editor = monaco.editor.create(document.getElementById('editor-container'), {
-        value: `{{ form.content.data | safe }}`,
-        language: 'markdown',
-        theme: 'vs-dark',
-        minimap: { enabled: false },
-        automaticLayout: true
-    });
-
-    // 同步内容到隐藏字段
-    editor.getModel().onDidChangeContent(() => {
-        const content = editor.getValue();
-        document.getElementById('hidden-content').value = content;
-        updatePreview(content);
-    });
-
-    // 初始预览
-    updatePreview(editor.getValue());
-});
-</script>
-
-<!-- 实时预览脚本 -->
-<script>
-function updatePreview(content) {
-    try {
-        const previewContainer = document.getElementById('preview-container');
-        
-        // 1. 消毒内容
-        const cleanContent = DOMPurify.sanitize(content);
-        
-        // 2. 转换 Markdown
-        const htmlContent = marked.parse(cleanContent);
-        
-        // 3. 更新预览内容
-        previewContainer.innerHTML = htmlContent;
-        
-        // 4. 渲染数学公式
-        renderMathInElement(previewContainer, {
-            delimiters: [
-                { left: '$$', right: '$$', display: true },  // 行间公式
-                { left: '$', right: '$', display: false }   // 行内公式
-            ],
-            throwOnError: false
-        });
-        
-        // 5. 高亮代码块
-        document.querySelectorAll('pre code').forEach((block) => {
-            hljs.highlightElement(block);
-        });
-    } catch (error) {
-        console.error('预览更新失败:', error);
-        previewContainer.innerHTML = '<div class="alert alert-danger">预览渲染错误</div>';
-    }
-}
-
-// 全屏切换功能
-window.toggleFullscreen = function() {
-    const preview = document.getElementById('preview-container');
-    preview.style.height = preview.style.height === '80vh' 
-        ? 'calc(70vh - 60px)' 
-        : '80vh';
-}
-</script>
+<!-- 引入独立的脚本文件 -->
+<script type="module" src="/static/edit.js"></script>
 {% endblock %}

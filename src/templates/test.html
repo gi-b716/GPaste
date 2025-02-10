@@ -1,0 +1,35 @@
+<div>
+    toolbar
+</div>
+<div style="display: flex; height: 40vh">
+    <div style="flex: 50%; height: 100%">
+        <div id="editor" style="height: 100%; width: 100%;"></div>
+    </div>
+    <div style="flex: 50%; height: 100%">
+        <div id="previewer" style="height: 100%; width: 100%; overflow: auto"></div>
+    </div>
+</div>
+<script type="module" src="/static/monaco-editor/esm/vs/editor/editor.main.js"></script>
+<script type="module">
+    // import * as monaco from "/static/monaco-editor/esm/vs/editor/editor.main.js";
+    import { marked } from "/static/marked.min.js";
+
+    let content = "# Hello";
+    let editor = monaco.editor.create(document.getElementById("editor"), {
+        automaticLayout: true,
+        language: "markdown",
+        value: content,
+        wordWrap: "on",
+        wrappingIndent: "same",
+    });
+
+    editor.onDidChangeModelContent((e) => {
+        preview();
+    });
+
+    function preview() {
+        content = editor.getValue();
+        const html = marked.parse(content);
+        document.getElementById("previewer").innerHTML = html;
+    }
+</script>
