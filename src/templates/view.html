@@ -25,8 +25,9 @@
                 </div>
             </div>
             
-            <div class="markdown-body">
-                <div class="markdown-content">{{ clipboard.content }}</div>
+            <!-- Markdown 内容渲染区域 -->
+            <div id="markdown-content" class="markdown-body">
+                {{ clipboard.content }}
             </div>
         </div>
         
@@ -71,4 +72,7 @@
         </script>
     </div>
 </div>
+
+<!-- 引入独立的脚本文件 -->
+<script src="/static/view.js"></script>
 {% endblock %}
