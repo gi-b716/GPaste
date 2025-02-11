@@ -11,16 +11,17 @@
             const cleanContent = content;
 
             // 2. 手动处理代码块
-            const processedContent = cleanContent
-                .split('\n')
-                .map(line => {
-                    // 如果行首有 4 个空格或 1 个 Tab，移除它们
-                    if (line.startsWith('    ') || line.startsWith('\t')) {
-                        return line.trimStart();
-                    }
-                    return line;
-                })
-                .join('\n');
+            // console.log(cleanContent);
+            const processedContent = cleanContent;
+                // .split('\n')
+                // .map(line => {
+                //     // 如果行首有 4 个空格或 1 个 Tab，移除它们
+                //     if (line.startsWith('    ') || line.startsWith('\t')) {
+                //         return line.trimStart();
+                //     }
+                //     return line;
+                // })
+                // .join('\n');
 
             // 3. 转换 Markdown
             const htmlContent = marked.parse(processedContent, {
