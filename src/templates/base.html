@@ -25,6 +25,12 @@
         blockquote p {
             display: inline;
         }
+        .d-flex {
+            height: 40px;
+        }
+        #submit1-b {
+            width: 100px;
+        }
     </style>
     {{ moment.include_moment() }}
     {{ moment.locale(auto_detect=True) }}
@@ -33,6 +39,11 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
             <a class="navbar-brand" href="/">共享剪贴板</a>
+            <!-- 新增：剪贴板跳转输入框 -->
+            <form class="d-flex" onsubmit="gotoClipboard(event)">
+                <input class="form-control me-2" type="text" id="clipboard-id" placeholder="输入剪贴板 ID" required>
+                <button class="btn btn-outline-light" id="submit1-b" type="submit">跳转</button>
+            </form>
             <div class="navbar-nav">
                 {% if current_user.is_authenticated %}
                     <a class="nav-link" href="{{ url_for('dashboard') }}">仪表盘</a>
@@ -73,5 +84,15 @@
     <script src="/static/auto-render.min.js"></script>
     <script src="/static/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js"></script>
+    <!-- 新增：跳转剪贴板的 JavaScript 函数 -->
+    <script>
+        function gotoClipboard(event) {
+            event.preventDefault(); // 阻止表单默认提交行为
+            const clipboardId = document.getElementById('clipboard-id').value.trim();
+            if (clipboardId) {
+                window.location.href = `/clip/${clipboardId}`; // 跳转到剪贴板页面
+            }
+        }
+    </script>
 </body>
 </html>
