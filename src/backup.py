@@ -24,4 +24,4 @@ def backup():
 if __name__ == '__main__':
     while True:
         backup()
-        time.sleep(BACKUP_TIME)
+        time.sleep(BACKUP_TIME*60)
