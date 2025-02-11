@@ -1,6 +1,8 @@
 仪表盘剪贴板预览
 查看提示
 编辑后返回查看
+monaco-editor 移到本地
+monaco-editor 新建为空
 
 ---
 
