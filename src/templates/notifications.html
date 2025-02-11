@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <h2>通知</h2>
+    <form action="{{ url_for('clear_notifications') }}" method="POST" class="mb-3">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-danger">清空所有通知</button>
+    </form>
+    {% for notification in current_user.notifications %}
+    <div class="card mb-3">
+        <div class="card-body">
+            <p>{{ notification.message }}</p>
+            <small class="text-muted">{{ moment(notification.created_at).format('YYYY-MM-DD HH:mm') }}</small>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

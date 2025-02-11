@@ -8,7 +8,7 @@ from flask_wtf.csrf import CSRFProtect
 from flask_moment import Moment
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from wtforms import StringField, PasswordField, TextAreaField, BooleanField
+from wtforms import StringField, PasswordField, TextAreaField, BooleanField, SelectField
 from wtforms.validators import DataRequired, Length
 import uuid
 import os
@@ -48,6 +48,10 @@ class User(UserMixin, db.Model):
     is_admin = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 添加created_at字段
     clipboards = db.relationship('Clipboard', backref='owner', lazy=True)
+    mode = db.Column(db.String(10), default='blacklist')  # 模式：blacklist 或 whitelist
+    blacklist = db.Column(db.Text, default='')  # 黑名单用户ID列表，用逗号分隔
+    whitelist = db.Column(db.Text, default='')  # 白名单用户ID列表，用逗号分隔
+    notifications = db.relationship('Notification', backref='user', lazy="dynamic")  # 通知
 
 class Clipboard(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -57,6 +61,13 @@ class Clipboard(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+
+class Notification(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    message = db.Column(db.String(200))
+    is_read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 # 表单类
 class LoginForm(FlaskForm):
@@ -77,6 +88,9 @@ class ProfileForm(FlaskForm):
     current_password = PasswordField('当前密码（仅修改密码时需要）')
     new_password = PasswordField('新密码')
     confirm_password = PasswordField('确认新密码')
+    mode = SelectField('模式', choices=[('blacklist', '黑名单模式'), ('whitelist', '白名单模式')])
+    blacklist = StringField('黑名单用户（用户名，用逗号分隔）')
+    whitelist = StringField('白名单用户（用户名，用逗号分隔）')
 
 # 登录管理
 @login_manager.user_loader
@@ -176,7 +190,7 @@ def delete(uid):
     db.session.commit()
     return redirect(url_for('dashboard'))
 
-@app.route('/clip/<uid>')
+@app.route('/clip/<uid>', methods=['GET', 'POST'])
 @limiter.limit("30 per minute")
 def view_clip(uid):
     clipboard = Clipboard.query.filter_by(uid=uid).first_or_404()
@@ -186,6 +200,28 @@ def view_clip(uid):
        (not current_user.is_authenticated or 
         (current_user.id != clipboard.user_id and not current_user.is_admin)):
         abort(403)
+    
+    # 处理邀请
+    if request.method == 'POST' and current_user.id == clipboard.user_id:
+        username = request.form.get('username')
+        user = User.query.filter_by(username=username).first()
+        if user:
+            # 检查用户是否在黑名单或白名单中
+            if user.mode == 'blacklist' and str(current_user.id) in user.blacklist.split(','):
+                flash(f'{username} 已将你加入黑名单，无法邀请', 'danger')
+            elif user.mode == 'whitelist' and str(current_user.id) not in user.whitelist.split(','):
+                flash(f'{username} 未将你加入白名单，无法邀请', 'danger')
+            else:
+                # 创建通知
+                notification = Notification(
+                    user_id=user.id,
+                    message=f'你被邀请查看剪贴板：{clipboard.uid}'
+                )
+                db.session.add(notification)
+                db.session.commit()
+                flash(f'已成功邀请 {username}', 'success')
+        else:
+            flash('用户不存在', 'danger')
     
     return render_template('view.html', 
                          clipboard=clipboard,
@@ -217,7 +253,7 @@ def set_admin(user_id):
 @login_required
 def profile():
     form = ProfileForm(obj=current_user)
-    
+
     if form.validate_on_submit():
         # 修改用户名
         if form.username.data != current_user.username:
@@ -236,9 +272,35 @@ def profile():
                 return redirect(url_for('profile'))
             current_user.password = bcrypt.generate_password_hash(form.new_password.data).decode('utf-8')
         
+        # 更新模式
+        current_user.mode = form.mode.data
+        
+        # 更新黑名单
+        blacklist_usernames = [name.strip() for name in form.blacklist.data.split(',')]
+        blacklist_ids = []
+        for username in blacklist_usernames:
+            user = User.query.filter_by(username=username).first()
+            if user:
+                blacklist_ids.append(str(user.id))
+        current_user.blacklist = ','.join(blacklist_ids)
+        
+        # 更新白名单
+        whitelist_usernames = [name.strip() for name in form.whitelist.data.split(',')]
+        whitelist_ids = []
+        for username in whitelist_usernames:
+            user = User.query.filter_by(username=username).first()
+            if user:
+                whitelist_ids.append(str(user.id))
+        current_user.whitelist = ','.join(whitelist_ids)
+        
         db.session.commit()
         flash('资料更新成功', 'success')
         return redirect(url_for('dashboard'))
+    
+    # 初始化表单数据
+    form.mode.data = current_user.mode
+    form.blacklist.data = ', '.join([User.query.get(int(id)).username for id in current_user.blacklist.split(',') if id])
+    form.whitelist.data = ', '.join([User.query.get(int(id)).username for id in current_user.whitelist.split(',') if id])
     
     return render_template('profile.html', form=form)
 
@@ -320,16 +382,65 @@ def edit_user(user_id):
                 return redirect(url_for('edit_user', user_id=user_id))
             target_user.password = bcrypt.generate_password_hash(form.new_password.data).decode('utf-8')
         
+        # 更新模式
+        target_user.mode = form.mode.data
+        
+        # 更新黑名单
+        blacklist_usernames = [name.strip() for name in form.blacklist.data.split(',')]
+        blacklist_ids = []
+        for username in blacklist_usernames:
+            user = User.query.filter_by(username=username).first()
+            if user:
+                blacklist_ids.append(str(user.id))
+        target_user.blacklist = ','.join(blacklist_ids)
+        
+        # 更新白名单
+        whitelist_usernames = [name.strip() for name in form.whitelist.data.split(',')]
+        whitelist_ids = []
+        for username in whitelist_usernames:
+            user = User.query.filter_by(username=username).first()
+            if user:
+                whitelist_ids.append(str(user.id))
+        target_user.whitelist = ','.join(whitelist_ids)
+        
         db.session.commit()
         flash('用户信息已更新', 'success')
         return redirect(url_for('admin'))
     
+    # 初始化表单数据
+    form.mode.data = target_user.mode
+    form.blacklist.data = ', '.join([User.query.get(int(id)).username for id in target_user.blacklist.split(',') if id])
+    form.whitelist.data = ', '.join([User.query.get(int(id)).username for id in target_user.whitelist.split(',') if id])
+    
     return render_template('edit_user.html', form=form, target_user=target_user)
+
+@app.route('/notifications')
+@login_required
+def notifications():
+    # 标记所有通知为已读
+    for notification in current_user.notifications:
+        notification.is_read = True
+    db.session.commit()
+    return render_template('notifications.html')
+
+@app.route('/clear_notifications', methods=['POST'])
+@login_required
+def clear_notifications():
+    # 删除当前用户的所有通知
+    Notification.query.filter_by(user_id=current_user.id).delete()
+    db.session.commit()
+    flash('所有通知已清空', 'success')
+    return redirect(url_for('notifications'))
 
 @app.errorhandler(429)
 def ratelimit_error(e):
     return render_template('rate_limit.html', 
                          message="请求过于频繁，请稍后再试"), 429
+
+@app.errorhandler(400)
+def bad_request(e):
+    return render_template('rate_limit.html', 
+                         message="请求无效"), 400
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True)

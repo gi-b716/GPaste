@@ -42,6 +42,15 @@
                 </form>
             </div>
         </div>
+        <div class="mb-3">
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="input-group">
+                    <input type="text" name="username" class="form-control" placeholder="输入用户名以邀请">
+                    <button type="submit" class="btn btn-primary">邀请</button>
+                </div>
+            </form>
+        </div>
         {% endif %}
 
         <div class="card mt-4" id="source-code">

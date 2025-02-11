@@ -19,7 +19,7 @@ def backup():
     with open(filename, 'w') as f:
         subprocess.run(cmd, stdout=f, check=True)
     
-    print(f"备份完成：{filename}\n下一次备份：{datetime.now() + timedelta(seconds=BACKUP_TIME)}")
+    print(f"备份完成：{filename}\n下一次备份：{datetime.now() + timedelta(minutes=BACKUP_TIME)}")
 
 if __name__ == '__main__':
     while True:

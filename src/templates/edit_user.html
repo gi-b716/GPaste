@@ -22,6 +22,24 @@
                 {{ form.confirm_password.label(class="form-label") }}
                 {{ form.confirm_password(class="form-control") }}
             </div>
+
+            <!-- 新增：黑白名单模式和名单管理 -->
+            <div class="mb-3">
+                {{ form.mode.label(class="form-label") }}
+                {{ form.mode(class="form-select") }}
+            </div>
+
+            <div class="mb-3">
+                {{ form.blacklist.label(class="form-label") }}
+                {{ form.blacklist(class="form-control", placeholder="输入用户名，用逗号分隔") }}
+                <small class="form-text text-muted">黑名单模式：拒绝这些用户的邀请</small>
+            </div>
+
+            <div class="mb-3">
+                {{ form.whitelist.label(class="form-label") }}
+                {{ form.whitelist(class="form-control", placeholder="输入用户名，用逗号分隔") }}
+                <small class="form-text text-muted">白名单模式：仅接受这些用户的邀请</small>
+            </div>
             
             <div class="d-grid gap-2">
                 <button type="submit" class="btn btn-primary">保存更改</button>
