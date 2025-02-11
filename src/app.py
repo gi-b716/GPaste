@@ -145,11 +145,7 @@ def create():
         )
         db.session.add(new_clip)
         db.session.commit()
-        return render_template('view.html', 
-                         clipboard=new_clip,
-                         is_owner=current_user.is_authenticated and 
-                                  (current_user.id == new_clip.user_id or 
-                                   current_user.is_admin))
+        return redirect(url_for('view_clip', uid=new_clip.uid))
     return render_template('edit.html', form=form)
 
 @app.route('/test')
@@ -166,11 +162,7 @@ def edit(uid):
     if form.validate_on_submit():
         clipboard.content = form.content.data
         db.session.commit()
-        return render_template('view.html', 
-                         clipboard=clipboard,
-                         is_owner=current_user.is_authenticated and 
-                                  (current_user.id == clipboard.user_id or 
-                                   current_user.is_admin))
+        return redirect(url_for('view_clip', uid=clipboard.uid))
     return render_template('edit.html', form=form)
 
 @app.route('/delete/<uid>', methods=['GET', 'POST'])
