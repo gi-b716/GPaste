@@ -1,14 +1,14 @@
 // static/edit.js
 (function() {
     // 配置 Monaco Editor
-    window.MonacoEnvironment = {
-        getWorkerUrl: function (moduleId, label) {
-            if (label === 'markdown') {
-                return './monaco-markdown.worker.js';
-            }
-            return './monaco-editor.worker.js';
-        }
-    };
+    // window.MonacoEnvironment = {
+    //     getWorkerUrl: function (moduleId, label) {
+    //         if (label === 'markdown') {
+    //             return './monaco-markdown.worker.js';
+    //         }
+    //         return './monaco-editor.worker.js';
+    //     }
+    // };
 
     // 加载 Monaco Editor
     require.config({
