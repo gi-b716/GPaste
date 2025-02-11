@@ -10,22 +10,33 @@
             // const cleanContent = DOMPurify.sanitize(content);
             const cleanContent = content;
 
-            // 2. 转换 Markdown
-            const htmlContent = marked.parse(cleanContent, {
+            // 2. 手动处理代码块
+            const processedContent = cleanContent
+                .split('\n')
+                .map(line => {
+                    // 如果行首有 4 个空格或 1 个 Tab，移除它们
+                    if (line.startsWith('    ') || line.startsWith('\t')) {
+                        return line.trimStart();
+                    }
+                    return line;
+                })
+                .join('\n');
+
+            // 3. 转换 Markdown
+            const htmlContent = marked.parse(processedContent, {
                 breaks: true,
                 highlight: function(code, lang) {
                     const validLang = hljs.getLanguage(lang) ? lang : 'plaintext';
                     return hljs.highlight(code, { language: validLang }).value;
                 },
-                // 禁用缩进代码块
                 pedantic: false, // 不严格遵循 CommonMark
                 gfm: true,       // 启用 GitHub Flavored Markdown
             });
 
-            // 3. 更新内容
+            // 4. 更新内容
             markdownContainer.innerHTML = htmlContent;
 
-            // 4. 渲染数学公式
+            // 5. 渲染数学公式
             if (window.renderMathInElement) {
                 renderMathInElement(markdownContainer, {
                     delimiters: [
@@ -38,7 +49,7 @@
                 console.warn('KaTeX 的 auto-render 扩展未加载');
             }
 
-            // 5. 高亮代码块
+            // 6. 高亮代码块
             document.querySelectorAll('pre code').forEach((block) => {
                 hljs.highlightElement(block);
             });
