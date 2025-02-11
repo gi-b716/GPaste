@@ -11,11 +11,20 @@
         .fade.show { opacity: 1; }
         .form-switch .form-check-input { width: 2.5em; margin-left: -2.5em; }
         .badge { font-size: 0.9em; padding: 0.5em 0.75em; }
-        .markdown-body { min-height: 200px; border-radius: 4px; padding: 20px; background: #f8f9fa; }
+        .markdown-body { min-height: 200px; border-radius: 4px; padding: 20px; }
         pre { white-space: pre-wrap; word-wrap: break-word; font-family: Monaco, Consolas, "Courier New", monospace; font-size: 0.9em; line-height: 1.5; border: 1px solid #dee2e6; }
         .markdown-preview { overflow-y: auto; height: calc(70vh - 60px); padding: 15px; }
         #markdown-editor { font-family: Monaco, Consolas, "Courier New", monospace; font-size: 0.9em; line-height: 1.5; border: 1px solid #dee2e6; border-radius: 4px; padding: 15px !important; }
         @media (max-width: 768px) { .markdown-preview { height: 400px; } }
+        blockquote {
+            background: #f9f9f9;
+            border-left: 4px solid #ccc;
+            margin: 1.5em 10px;
+            padding: 0.5em 10px;
+        }
+        blockquote p {
+            display: inline;
+        }
     </style>
     {{ moment.include_moment() }}
     {{ moment.locale(auto_detect=True) }}
