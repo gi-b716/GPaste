@@ -16,7 +16,10 @@
                 highlight: function(code, lang) {
                     const validLang = hljs.getLanguage(lang) ? lang : 'plaintext';
                     return hljs.highlight(code, { language: validLang }).value;
-                }
+                },
+                // 禁用缩进代码块
+                pedantic: false, // 不严格遵循 CommonMark
+                gfm: true,       // 启用 GitHub Flavored Markdown
             });
 
             // 3. 更新内容

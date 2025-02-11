@@ -1,7 +1,6 @@
 仪表盘剪贴板预览
 剪贴板代码高亮
 markdown katex支持
-markdown预览非实时
 查看提示
 
 ---
@@ -18,3 +17,4 @@ clip界面自己的剪贴板显示编辑和删除及公开状态
 定期backup
 时间错误
 markdown源码复制
+markdown预览非实时
