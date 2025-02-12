@@ -118,8 +118,9 @@ def login():
         if user and bcrypt.check_password_hash(user.password, form.password.data):
             login_user(user)
             next_page = request.args.get('next')
-            if "logout" in next_page:
-                next_page = ""
+            if next_page:
+                if "logout" in next_page:
+                    next_page = ""
             return redirect(next_page or url_for('dashboard'))
         flash('无效的用户名或密码', 'danger')
     return render_template('login.html', form=form)
@@ -220,7 +221,7 @@ def view_clip(uid):
         abort(403)
     
     # 处理邀请
-    if request.method == 'POST' and current_user.id == clipboard.user_id:
+    if request.method == 'POST' and (current_user.id == clipboard.user_id or current_user.is_admin):
         username = request.form.get('username')
         user = User.query.filter_by(username=username).first()
         if user:
