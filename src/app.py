@@ -161,6 +161,15 @@ def create():
             user_id=current_user.id,
             is_public=form.is_public.data
         )
+        # 管理员可以修改 UID
+        if current_user.is_admin:
+            new_uid = request.form.get('uid')
+            if new_uid and new_uid != new_clip.uid:
+                # 检查新 UID 是否已存在
+                if new_clip.query.filter_by(uid=new_uid).first():
+                    flash('该 UID 已存在，请使用其他 UID', 'danger')
+                else:
+                    new_clip.uid = new_uid
         db.session.add(new_clip)
         db.session.commit()
         return redirect(url_for('view_clip', uid=new_clip.uid))
