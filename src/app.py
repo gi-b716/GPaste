@@ -118,6 +118,8 @@ def login():
         if user and bcrypt.check_password_hash(user.password, form.password.data):
             login_user(user)
             next_page = request.args.get('next')
+            if "logout" in next_page:
+                next_page = ""
             return redirect(next_page or url_for('dashboard'))
         flash('无效的用户名或密码', 'danger')
     return render_template('login.html', form=form)
@@ -161,7 +163,7 @@ def create():
         db.session.add(new_clip)
         db.session.commit()
         return redirect(url_for('view_clip', uid=new_clip.uid))
-    return render_template('edit.html', form=form)
+    return render_template('edit.html', form=form, clipboard=form, is_create=True)
 
 @app.route('/test')
 def test():
@@ -183,6 +185,8 @@ def edit(uid):
         # 管理员可以修改 UID
         if current_user.is_admin:
             new_uid = request.form.get('uid')
+            if new_uid == "":
+                new_uid = str(uuid.uuid4())
             if new_uid and new_uid != clipboard.uid:
                 # 检查新 UID 是否已存在
                 if Clipboard.query.filter_by(uid=new_uid).first():
@@ -192,7 +196,7 @@ def edit(uid):
         db.session.commit()
         flash('剪贴板已更新', 'success')
         return redirect(url_for('view_clip', uid=clipboard.uid))
-    return render_template('edit.html', form=form, clipboard=clipboard)
+    return render_template('edit.html', form=form, clipboard=clipboard, is_create=False)
 
 @app.route('/delete/<uid>', methods=['GET', 'POST'])
 @login_required
