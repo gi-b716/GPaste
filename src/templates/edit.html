@@ -21,6 +21,15 @@
                         <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">取消</a>
                         <button type="submit" class="btn btn-primary">保存</button>
                     </div>
+
+                    <!-- 新增：管理员修改 UID -->
+                    {% if current_user.is_admin %}
+                    <div class="mb-3">
+                        <label for="uid" class="form-label">剪贴板 UID</label>
+                        <input type="text" name="uid" class="form-control" value="{{ clipboard.uid }}" required>
+                        <small class="form-text text-muted">仅管理员可修改 UID</small>
+                    </div>
+                    {% endif %}
                 </div>
             </form>
         </div>

@@ -173,12 +173,26 @@ def edit(uid):
     clipboard = Clipboard.query.filter_by(uid=uid).first_or_404()
     if current_user.id != clipboard.user_id and not current_user.is_admin:
         abort(403)
+    
     form = ClipboardForm(obj=clipboard)
     if form.validate_on_submit():
+        # 更新内容
         clipboard.content = form.content.data
+        clipboard.is_public = form.is_public.data
+        
+        # 管理员可以修改 UID
+        if current_user.is_admin:
+            new_uid = request.form.get('uid')
+            if new_uid and new_uid != clipboard.uid:
+                # 检查新 UID 是否已存在
+                if Clipboard.query.filter_by(uid=new_uid).first():
+                    flash('该 UID 已存在，请使用其他 UID', 'danger')
+                    return redirect(url_for('edit', uid=clipboard.uid))
+                clipboard.uid = new_uid
         db.session.commit()
+        flash('剪贴板已更新', 'success')
         return redirect(url_for('view_clip', uid=clipboard.uid))
-    return render_template('edit.html', form=form)
+    return render_template('edit.html', form=form, clipboard=clipboard)
 
 @app.route('/delete/<uid>', methods=['GET', 'POST'])
 @login_required
