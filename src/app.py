@@ -593,4 +593,8 @@ def error404(e):
                          message="你所访问的页面不存在或已隐藏"), 404
 
 if __name__ == '__main__':
+    for root_user in ROOT_USER:
+        if User.query.get(root_user):
+            root_user.is_admin = True
+            db.session.commit()
     app.run(host='0.0.0.0', debug=True)
