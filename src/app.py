@@ -423,6 +423,49 @@ def notifications():
     db.session.commit()
     return render_template('notifications.html')
 
+@app.route('/send_notification/<int:user_id>', methods=['POST'])
+@login_required
+def send_notification(user_id):
+    if not current_user.is_admin:
+        abort(403)
+    
+    user = User.query.get_or_404(user_id)
+    message = request.form.get('message')
+    if message:
+        notification = Notification(
+            user_id=user.id,
+            message=message
+        )
+        db.session.add(notification)
+        db.session.commit()
+        flash(f'已成功发送通知给 {user.username}', 'success')
+    else:
+        flash('通知内容不能为空', 'danger')
+    
+    return redirect(url_for('admin'))
+
+@app.route('/send_global_notification', methods=['POST'])
+@login_required
+def send_global_notification():
+    if not current_user.is_admin:
+        abort(403)
+    
+    message = request.form.get('message')
+    if message:
+        users = User.query.all()
+        for user in users:
+            notification = Notification(
+                user_id=user.id,
+                message=message
+            )
+            db.session.add(notification)
+        db.session.commit()
+        flash('已成功发送全局通知', 'success')
+    else:
+        flash('通知内容不能为空', 'danger')
+    
+    return redirect(url_for('admin'))
+
 @app.route('/clear_notifications', methods=['POST'])
 @login_required
 def clear_notifications():

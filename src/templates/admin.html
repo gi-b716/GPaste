@@ -3,6 +3,20 @@
 {% block content %}
 <h2 class="mb-4">管理面板</h2>
 
+<!-- 新增：全局通知发送 -->
+<div class="card mb-4 border-primary">
+    <div class="card-header bg-primary text-white">发送全局通知</div>
+    <div class="card-body">
+        <form action="{{ url_for('send_global_notification') }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="input-group">
+                <input type="text" name="message" class="form-control" placeholder="输入通知内容" required>
+                <button type="submit" class="btn btn-primary">发送</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="card mb-4 border-danger">
     <div class="card-header bg-danger text-white">批量操作</div>
     <div class="card-body">
@@ -75,6 +89,14 @@
                             <form action="{{ url_for('toggle_admin', user_id=user.id) }}" method="POST">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="btn btn-sm btn-warning">{{ '取消管理员' if user.is_admin else '设为管理员' }}</button>
+                            </form>
+                            <!-- 新增：发送通知给单个用户 -->
+                            <form action="{{ url_for('send_notification', user_id=user.id) }}" method="POST" class="d-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <div class="input-group">
+                                    <input type="text" name="message" class="form-control form-control-sm" placeholder="通知内容" required>
+                                    <button type="submit" class="btn btn-sm btn-outline-success">发送通知</button>
+                                </div>
                             </form>
                         </div>
                     </td>
