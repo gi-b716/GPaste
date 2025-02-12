@@ -42,6 +42,7 @@
                 </form>
             </div>
         </div>
+        {% if clipboard.is_public %}
         <div class="mb-3">
             <form method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -51,6 +52,7 @@
                 </div>
             </form>
         </div>
+        {% endif %}
         {% endif %}
 
         <div class="card mt-4" id="source-code">
