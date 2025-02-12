@@ -8,6 +8,7 @@ from flask_wtf.csrf import CSRFProtect
 from flask_moment import Moment
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+import logging, time
 from wtforms import StringField, PasswordField, TextAreaField, BooleanField, SelectField
 from wtforms.validators import DataRequired, Length
 import uuid
@@ -39,6 +40,14 @@ login_manager.login_message_category = 'info'
 login_manager.login_message = "请先登录以访问该页面。"
 
 ROOT_USER = [1]
+
+logger = logging.getLogger('logger')
+logger.setLevel(logging.DEBUG)
+logFormatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logFile = logging.FileHandler("log/{0}.log".format(time.strftime("%Y-%m-%d_%H-%M-%S",time.localtime(time.time()))))
+logFile.setLevel(logging.DEBUG)
+logFile.setFormatter(logFormatter)
+logger.addHandler(logFile)
 
 # 数据库模型
 class User(UserMixin, db.Model):
@@ -121,6 +130,7 @@ def login():
             if next_page:
                 if "logout" in next_page:
                     next_page = ""
+            logger.info('User {} logged in'.format(user.username))
             return redirect(next_page or url_for('dashboard'))
         flash('无效的用户名或密码', 'danger')
     return render_template('login.html', form=form)
@@ -141,12 +151,14 @@ def register():
         db.session.add(user)
         db.session.commit()
         flash('注册成功，请登录', 'success')
+        logger.info("User {} registered".format(user.username))
         return redirect(url_for('login'))
     return render_template('register.html', form=form)
 
 @app.route('/logout')
 @login_required
 def logout():
+    logger.info('User {} logged out'.format(current_user.username))
     logout_user()
     return redirect(url_for('login'))
 
@@ -172,6 +184,7 @@ def create():
                     new_clip.uid = new_uid
         db.session.add(new_clip)
         db.session.commit()
+        logger.info('User {} created clipboard {}'.format(current_user.username, new_clip.uid))
         return redirect(url_for('view_clip', uid=new_clip.uid))
     return render_template('edit.html', form=form, clipboard=form)
 
@@ -201,6 +214,7 @@ def edit(uid):
                 clipboard.uid = new_uid
         db.session.commit()
         flash('剪贴板已更新', 'success')
+        logger.info('User {} edited clipboard {}'.format(current_user.username, clipboard.uid))
         return redirect(url_for('view_clip', uid=clipboard.uid))
     return render_template('edit.html', form=form, clipboard=clipboard)
 
@@ -210,6 +224,7 @@ def delete(uid):
     clipboard = Clipboard.query.filter_by(uid=uid).first_or_404()
     if current_user.id != clipboard.user_id and not current_user.is_admin:
         abort(403)
+    logger.info('User {} deleted clipboard {}'.format(current_user.username, clipboard.uid))
     db.session.delete(clipboard)
     db.session.commit()
     return redirect(url_for('dashboard'))
@@ -220,6 +235,7 @@ def delete_notification(id):
     notification = Notification.query.filter_by(id=id).first_or_404()
     if not current_user.is_admin:
         abort(403)
+    logger.info('User {} deleted notification {}'.format(current_user.username, notification.id))
     db.session.delete(notification)
     db.session.commit()
     return redirect(url_for('admin'))
@@ -253,6 +269,7 @@ def view_clip(uid):
                 )
                 db.session.add(notification)
                 db.session.commit()
+                logger.info('User {} invited {} to view clipboard {}'.format(current_user.username, username, clipboard.uid))
                 flash(f'已成功邀请 {username}', 'success')
         else:
             flash('用户不存在', 'danger')
@@ -282,6 +299,7 @@ def set_admin(user_id):
     user.is_admin = True
     db.session.commit()
     flash(f'已成功将 {user.username} 设为管理员', 'success')
+    logger.info('User {} set {} as admin'.format(current_user.username, user.username))
     return redirect(url_for('admin'))
 
 @app.route('/profile', methods=['GET', 'POST'])
@@ -330,6 +348,7 @@ def profile():
         
         db.session.commit()
         flash('资料更新成功', 'success')
+        logger.info('User {} updated profile'.format(current_user.username))
         return redirect(url_for('dashboard'))
     
     # 初始化表单数据
@@ -352,6 +371,7 @@ def delete_user(user_id):
     # 删除关联剪贴板
     Clipboard.query.filter_by(user_id=user_id).delete()
     # 删除用户
+    logger.info('User {} deleted user {}'.format(current_user.username, target_user.username))
     db.session.delete(target_user)
     db.session.commit()
     if current_user.id == user_id:
@@ -379,6 +399,7 @@ def toggle_admin(user_id):
             db.session.commit()
             flash(f'已{"取消" if not user.is_admin else "设置"} {user.username} 的管理员权限', 'success')
     
+    logger.info('User {} toggled admin status of {}'.format(current_user.username, user.username))
     return redirect(url_for('admin'))
 
 @app.route('/delete_all_clipboards', methods=['POST'])
@@ -394,7 +415,9 @@ def delete_all_clipboards():
     except Exception as e:
         db.session.rollback()
         flash('删除失败: ' + str(e), 'danger')
+        logger.error('Failed to delete all clipboards: ' + str(e))
     
+    logger.info('User {} deleted all clipboards'.format(current_user.username))
     return redirect(url_for('admin'))
 
 @app.route('/delete_all_notifications', methods=['POST'])
@@ -410,7 +433,9 @@ def delete_all_notifications():
     except Exception as e:
         db.session.rollback()
         flash('删除失败: ' + str(e), 'danger')
+        logger.error('Failed to delete all notifications: ' + str(e))
     
+    logger.info('User {} deleted all notifications'.format(current_user.username))
     return redirect(url_for('admin'))
 
 @app.route('/admin/edit_user/<int:user_id>', methods=['GET', 'POST'])
@@ -463,6 +488,7 @@ def edit_user(user_id):
         
         db.session.commit()
         flash('用户信息已更新', 'success')
+        logger.info('User {} updated user {}'.format(current_user.username, target_user.username))
         return redirect(url_for('admin'))
     
     # 初始化表单数据
@@ -507,6 +533,7 @@ def send_notification(user_id):
         db.session.add(notification)
         db.session.commit()
         flash(f'已成功发送通知给 {user.username}', 'success')
+        logger.info('User {} sent notification to {}'.format(current_user.username, user.username))
     else:
         flash('通知内容不能为空', 'danger')
     
@@ -529,6 +556,7 @@ def send_global_notification():
             db.session.add(notification)
         db.session.commit()
         flash('已成功发送全局通知', 'success')
+        logger.info('User {} sent global notification'.format(current_user.username))
     else:
         flash('通知内容不能为空', 'danger')
     
@@ -546,6 +574,7 @@ def clear_notifications(user_id):
     Notification.query.filter_by(user_id=user_id).delete()
     db.session.commit()
     flash('所有通知已清空', 'success')
+    logger.info('User {} cleared notifications of user {}'.format(current_user.username, User.query.get(user_id).username))
     return redirect(url_for('get_notifications', user_id=user_id))
 
 @app.errorhandler(429)
