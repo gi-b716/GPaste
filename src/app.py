@@ -166,10 +166,6 @@ def create():
         return redirect(url_for('view_clip', uid=new_clip.uid))
     return render_template('edit.html', form=form, clipboard=form, is_create=True)
 
-@app.route('/test')
-def test():
-    return render_template('test.html')
-
 @app.route('/edit/<uid>', methods=['GET', 'POST'])
 @login_required
 def edit(uid):
