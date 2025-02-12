@@ -2,11 +2,11 @@
 {% block content %}
 <div class="container">
     <h2>通知</h2>
-    <form action="{{ url_for('clear_notifications') }}" method="POST" class="mb-3">
+    <form action="{{ url_for('clear_notifications', user_id=user_id) }}" method="POST" class="mb-3">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn-danger">清空所有通知</button>
     </form>
-    {% for notification in current_user.notifications %}
+    {% for notification in notifications %}
     <div class="card mb-3">
         <div class="card-body">
             <p>{{ notification.message }}</p>

@@ -16,7 +16,7 @@ from datetime import datetime
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.urandom(24)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://{0}:{1}@localhost/clipboard_db'.format(
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://{0}:{1}@localhost/test'.format(
     os.environ['SQL_USERNAME'], os.environ['SQL_PASSWORD']
 )
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -173,7 +173,7 @@ def create():
         db.session.add(new_clip)
         db.session.commit()
         return redirect(url_for('view_clip', uid=new_clip.uid))
-    return render_template('edit.html', form=form, clipboard=form, is_create=True)
+    return render_template('edit.html', form=form, clipboard=form)
 
 @app.route('/edit/<uid>', methods=['GET', 'POST'])
 @login_required
@@ -202,7 +202,7 @@ def edit(uid):
         db.session.commit()
         flash('剪贴板已更新', 'success')
         return redirect(url_for('view_clip', uid=clipboard.uid))
-    return render_template('edit.html', form=form, clipboard=clipboard, is_create=False)
+    return render_template('edit.html', form=form, clipboard=clipboard)
 
 @app.route('/delete/<uid>', methods=['GET', 'POST'])
 @login_required
@@ -213,6 +213,16 @@ def delete(uid):
     db.session.delete(clipboard)
     db.session.commit()
     return redirect(url_for('dashboard'))
+
+@app.route('/delete_notification/<int:id>', methods=['GET', 'POST'])
+@login_required
+def delete_notification(id):
+    notification = Notification.query.filter_by(id=id).first_or_404()
+    if not current_user.is_admin:
+        abort(403)
+    db.session.delete(notification)
+    db.session.commit()
+    return redirect(url_for('admin'))
 
 @app.route('/clip/<uid>', methods=['GET', 'POST'])
 @limiter.limit("30 per minute")
@@ -260,7 +270,8 @@ def admin():
         abort(403)
     clipboards = Clipboard.query.all()
     users = User.query.all()
-    return render_template('admin.html', clipboards=clipboards, users=users)
+    notifications = Notification.query.all()
+    return render_template('admin.html', clipboards=clipboards, users=users, notifications=notifications)
 
 @app.route('/set_admin/<int:user_id>', methods=['POST'])
 @login_required
@@ -335,6 +346,9 @@ def delete_user(user_id):
     # 权限验证
     if not (current_user.is_admin or current_user.id == user_id):
         abort(403)
+    if user_id in ROOT_USER:
+        flash('无法删除此用户', 'danger')
+        return redirect(url_for('admin'))
     # 删除关联剪贴板
     Clipboard.query.filter_by(user_id=user_id).delete()
     # 删除用户
@@ -383,11 +397,31 @@ def delete_all_clipboards():
     
     return redirect(url_for('admin'))
 
+@app.route('/delete_all_notifications', methods=['POST'])
+@login_required
+def delete_all_notifications():
+    if not current_user.is_admin:
+        abort(403)
+    
+    try:
+        num_deleted = Notification.query.delete()
+        db.session.commit()
+        flash(f'已删除全部 {num_deleted} 个通知', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash('删除失败: ' + str(e), 'danger')
+    
+    return redirect(url_for('admin'))
+
 @app.route('/admin/edit_user/<int:user_id>', methods=['GET', 'POST'])
 @login_required
 def edit_user(user_id):
     if not current_user.is_admin:
         abort(403)
+    
+    if user_id in ROOT_USER:
+        flash('无法编辑此用户', 'danger')
+        return redirect(url_for('admin'))
     
     target_user = User.query.get_or_404(user_id)
     form = ProfileForm(obj=target_user)
@@ -445,7 +479,17 @@ def notifications():
     for notification in current_user.notifications:
         notification.is_read = True
     db.session.commit()
-    return render_template('notifications.html')
+    return render_template('notifications.html', notifications=current_user.notifications, user_id=current_user.id)
+
+@app.route('/notifications/<int:user_id>')
+@login_required
+def get_notifications(user_id):
+    if not current_user.is_admin and current_user.id != user_id:
+        abort(403)
+    if user_id == current_user.id:
+        return redirect(url_for('notifications'))
+    target_user = User.query.get_or_404(user_id)
+    return render_template('notifications.html', notifications=target_user.notifications, user_id=user_id)
 
 @app.route('/send_notification/<int:user_id>', methods=['POST'])
 @login_required
@@ -490,14 +534,19 @@ def send_global_notification():
     
     return redirect(url_for('admin'))
 
-@app.route('/clear_notifications', methods=['POST'])
+@app.route('/clear_notifications/<int:user_id>', methods=['POST'])
 @login_required
-def clear_notifications():
+def clear_notifications(user_id):
+    if not current_user.is_admin and current_user.id != user_id:
+        abort(403)
+    if user_id != current_user.id and user_id in ROOT_USER:
+        flash('无法清空此用户的通知', 'danger')
+        return redirect(url_for('get_notifications', user_id=user_id))
     # 删除当前用户的所有通知
-    Notification.query.filter_by(user_id=current_user.id).delete()
+    Notification.query.filter_by(user_id=user_id).delete()
     db.session.commit()
     flash('所有通知已清空', 'success')
-    return redirect(url_for('notifications'))
+    return redirect(url_for('get_notifications', user_id=user_id))
 
 @app.errorhandler(429)
 def ratelimit_error(e):

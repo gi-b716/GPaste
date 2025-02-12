@@ -20,11 +20,18 @@
 <div class="card mb-4 border-danger">
     <div class="card-header bg-danger text-white">批量操作</div>
     <div class="card-body">
-        <form action="{{ url_for('delete_all_clipboards') }}" method="POST" 
-              onsubmit="return confirm('确定要删除所有剪贴板吗？此操作不可恢复！');">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-danger">删除所有剪贴板</button>
-        </form>
+        <div class="btn-group">
+            <form action="{{ url_for('delete_all_clipboards') }}" method="POST" 
+                onsubmit="return confirm('确定要删除所有剪贴板吗？此操作不可恢复！');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-danger">删除所有剪贴板</button>
+            </form>
+            <form action="{{ url_for('delete_all_notifications') }}" method="POST" 
+                onsubmit="return confirm('确定要删除所有通知吗？此操作不可恢复！');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-danger">删除所有通知</button>
+            </form>
+        </div>
     </div>
 </div>
 
@@ -58,7 +65,7 @@
     </div>
 </div>
 
-<div class="card">
+<div class="card mb-4">
     <div class="card-header">所有用户</div>
     <div class="card-body">
         <table class="table table-hover">
@@ -98,7 +105,45 @@
                                     <button type="submit" class="btn btn-sm btn-outline-success">发送通知</button>
                                 </div>
                             </form>
+                            <!-- 新增：查看用户通知 -->
+                            <a href="{{ url_for('get_notifications', user_id=user.id) }}" 
+                               class="btn btn-sm btn-outline-info">查看通知</a>
                         </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 新增：所有通知 -->
+<div class="card">
+    <div class="card-header">所有通知</div>
+    <div class="card-body">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>用户</th>
+                    <th>通知内容</th>
+                    <th>时间</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for notification in notifications %}
+                <tr>
+                    <td>{{ notification.user.username }}</td>
+                    <td>{{ notification.message }}</td>
+                    <td>{{ moment(notification.created_at).format('YYYY-MM-DD HH:mm') }}</td>
+                    <td>{{ '未读' if not notification.is_read else '已读' }}</td>
+                    <td>
+                        <form action="{{ url_for('delete_notification', id=notification.id) }}" 
+                                method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">删除</button>
+                        </form>
                     </td>
                 </tr>
                 {% endfor %}
