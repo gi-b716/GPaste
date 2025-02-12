@@ -509,5 +509,10 @@ def bad_request(e):
     return render_template('rate_limit.html', 
                          message="请求无效"), 400
 
+@app.errorhandler(404)
+def error404(e):
+    return render_template('rate_limit.html', 
+                         message="你所访问的页面不存在或已隐藏"), 404
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True)
