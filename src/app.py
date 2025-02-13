@@ -302,6 +302,9 @@ def view_clip(uid):
         (current_user.id != clipboard.user_id and not current_user.is_admin)):
         abort(403)
     
+    if current_user.id not in ROOT_USER and clipboard.user_id == SYSTEM_USER and not clipboard.is_public:
+        abort(403)
+    
     # 处理邀请
     if request.method == 'POST' and (current_user.id == clipboard.user_id or current_user.is_admin):
         username = request.form.get('username')
@@ -460,7 +463,7 @@ def delete_all_clipboards():
         abort(403)
     
     try:
-        num_deleted = Clipboard.query.delete()
+        num_deleted = Clipboard.query.filter(Clipboard.user_id != SYSTEM_USER).delete()
         db.session.commit()
         flash(f'已删除全部 {num_deleted} 个剪贴板', 'success')
     except Exception as e:
