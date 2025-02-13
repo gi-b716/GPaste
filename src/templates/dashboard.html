@@ -1,8 +1,13 @@
 <!-- templates/dashboard.html -->
 {% extends "base.html" %}
 {% block content %}
+{% if system %}
+<h2>系统剪贴板</h2>
+<a href="{{ url_for('create_system') }}" class="btn btn-primary mb-3">新建</a>
+{% else %}
 <h2>我的剪贴板</h2>
 <a href="{{ url_for('create') }}" class="btn btn-primary mb-3">新建</a>
+{% endif %}
 {% for clip in clipboards %}
 <div class="card clipboard-card">
     <div class="card-body">

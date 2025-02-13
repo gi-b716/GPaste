@@ -71,6 +71,7 @@
         <table class="table table-hover">
             <thead>
                 <tr>
+                    <th>ID</th>
                     <th>用户名</th>
                     <th>注册时间</th>
                     <th>管理员</th>
@@ -79,7 +80,9 @@
             </thead>
             <tbody>
                 {% for user in users %}
+                {% if user.id != SYSTEM_USER %}
                 <tr>
+                    <td>{{ user.id }}</td>
                     <td>{{ user.username }}</td>
                     <td>{{ moment(user.created_at).format('YYYY-MM-DD HH:mm') }}</td>
                     <td>{{ '是' if user.is_admin else '否' }}</td>
@@ -111,6 +114,7 @@
                         </div>
                     </td>
                 </tr>
+                {% endif %}
                 {% endfor %}
             </tbody>
         </table>

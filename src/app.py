@@ -39,12 +39,13 @@ login_manager.login_view = 'login'
 login_manager.login_message_category = 'info'
 login_manager.login_message = "请先登录以访问该页面。"
 
-ROOT_USER = [1]
+SYSTEM_USER = 11
+ROOT_USER = [SYSTEM_USER, 1]
 
 logger = logging.getLogger('logger')
 logger.setLevel(logging.DEBUG)
 logFormatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logFile = logging.FileHandler("log/{0}.log".format(time.strftime("%Y-%m-%d_%H-%M-%S",time.localtime(time.time()))))
+logFile = logging.FileHandler("log/{0}.log".format(time.strftime("%Y-%m-%d_%H-%M-%S",time.localtime(time.time()))), encoding="utf-8")
 logFile.setLevel(logging.DEBUG)
 logFile.setFormatter(logFormatter)
 logger.addHandler(logFile)
@@ -115,8 +116,16 @@ def index():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    clipboards = Clipboard.query.filter_by(user_id=current_user.id).all()
-    return render_template('dashboard.html', clipboards=clipboards)
+    clipboards = Clipboard.query.filter_by(user_id=current_user.id).order_by(Clipboard.created_at.desc()).all()
+    return render_template('dashboard.html', clipboards=clipboards, system=False, root_user=ROOT_USER)
+
+@app.route('/dashboard/system')
+@login_required
+def dashboard_system():
+    if current_user.id not in ROOT_USER:
+        abort(403)
+    clipboards = Clipboard.query.filter_by(user_id=SYSTEM_USER).order_by(Clipboard.created_at.desc()).all()
+    return render_template('dashboard.html', clipboards=clipboards, system=True, root_user=ROOT_USER)
 
 @app.route('/login', methods=['GET', 'POST'])
 @limiter.limit("60 per minute")
@@ -124,6 +133,9 @@ def login():
     form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
+        if user and user.id == SYSTEM_USER:
+            flash('系统用户无法登录', 'danger')
+            return redirect(url_for('login'))
         if user and bcrypt.check_password_hash(user.password, form.password.data):
             login_user(user)
             next_page = request.args.get('next')
@@ -186,7 +198,35 @@ def create():
         db.session.commit()
         logger.info('User {} created clipboard {}'.format(current_user.username, new_clip.uid))
         return redirect(url_for('view_clip', uid=new_clip.uid))
-    return render_template('edit.html', form=form, clipboard=form)
+    return render_template('edit.html', form=form, clipboard=form, root_user=ROOT_USER)
+
+@app.route('/create/system', methods=['GET', 'POST'])
+@login_required
+def create_system():
+    if current_user.id not in ROOT_USER:
+        abort(403)
+    form = ClipboardForm()
+    if form.validate_on_submit():
+        new_clip = Clipboard(
+            uid=str(uuid.uuid4()),
+            content=form.content.data,
+            user_id=SYSTEM_USER,
+            is_public=form.is_public.data
+        )
+        # 管理员可以修改 UID
+        if current_user.is_admin:
+            new_uid = request.form.get('uid')
+            if new_uid and new_uid != new_clip.uid:
+                # 检查新 UID 是否已存在
+                if new_clip.query.filter_by(uid=new_uid).first():
+                    flash('该 UID 已存在，请使用其他 UID', 'danger')
+                else:
+                    new_clip.uid = new_uid
+        db.session.add(new_clip)
+        db.session.commit()
+        logger.info('User {} created clipboard {} for system'.format(current_user.username, new_clip.uid))
+        return redirect(url_for('view_clip', uid=new_clip.uid))
+    return render_template('edit.html', form=form, clipboard=form, root_user=ROOT_USER)
 
 @app.route('/edit/<uid>', methods=['GET', 'POST'])
 @login_required
@@ -216,7 +256,7 @@ def edit(uid):
         flash('剪贴板已更新', 'success')
         logger.info('User {} edited clipboard {}'.format(current_user.username, clipboard.uid))
         return redirect(url_for('view_clip', uid=clipboard.uid))
-    return render_template('edit.html', form=form, clipboard=clipboard)
+    return render_template('edit.html', form=form, clipboard=clipboard, root_user=ROOT_USER)
 
 @app.route('/delete/<uid>', methods=['GET', 'POST'])
 @login_required
@@ -278,7 +318,7 @@ def view_clip(uid):
                          clipboard=clipboard,
                          is_owner=current_user.is_authenticated and 
                                   (current_user.id == clipboard.user_id or 
-                                   current_user.is_admin))
+                                   current_user.is_admin), root_user=ROOT_USER)
 
 @app.route('/admin')
 @login_required
@@ -288,7 +328,7 @@ def admin():
     clipboards = Clipboard.query.all()
     users = User.query.all()
     notifications = Notification.query.all()
-    return render_template('admin.html', clipboards=clipboards, users=users, notifications=notifications)
+    return render_template('admin.html', clipboards=clipboards, users=users, notifications=notifications, SYSTEM_USER=SYSTEM_USER, root_user=ROOT_USER)
 
 @app.route('/set_admin/<int:user_id>', methods=['POST'])
 @login_required
@@ -356,7 +396,7 @@ def profile():
     form.blacklist.data = ', '.join([User.query.get(int(id)).username for id in current_user.blacklist.split(',') if id])
     form.whitelist.data = ', '.join([User.query.get(int(id)).username for id in current_user.whitelist.split(',') if id])
     
-    return render_template('profile.html', form=form)
+    return render_template('profile.html', form=form, root_user=ROOT_USER)
 
 @app.route('/delete_user/<int:user_id>', methods=['POST'])
 @login_required
@@ -365,7 +405,7 @@ def delete_user(user_id):
     # 权限验证
     if not (current_user.is_admin or current_user.id == user_id):
         abort(403)
-    if user_id in ROOT_USER:
+    if user_id in ROOT_USER and user_id != current_user.id:
         flash('无法删除此用户', 'danger')
         return redirect(url_for('admin'))
     # 删除关联剪贴板
@@ -444,7 +484,7 @@ def edit_user(user_id):
     if not current_user.is_admin:
         abort(403)
     
-    if user_id in ROOT_USER:
+    if user_id in ROOT_USER and user_id != current_user.id:
         flash('无法编辑此用户', 'danger')
         return redirect(url_for('admin'))
     
@@ -496,7 +536,7 @@ def edit_user(user_id):
     form.blacklist.data = ', '.join([User.query.get(int(id)).username for id in target_user.blacklist.split(',') if id])
     form.whitelist.data = ', '.join([User.query.get(int(id)).username for id in target_user.whitelist.split(',') if id])
     
-    return render_template('edit_user.html', form=form, target_user=target_user)
+    return render_template('edit_user.html', form=form, target_user=target_user, root_user=ROOT_USER)
 
 @app.route('/notifications')
 @login_required
@@ -505,7 +545,8 @@ def notifications():
     for notification in current_user.notifications:
         notification.is_read = True
     db.session.commit()
-    return render_template('notifications.html', notifications=current_user.notifications, user_id=current_user.id)
+    notifications = Notification.query.filter_by(user_id=current_user.id).order_by(Notification.created_at.desc()).all()
+    return render_template('notifications.html', notifications=notifications, user_id=current_user.id, root_user=ROOT_USER)
 
 @app.route('/notifications/<int:user_id>')
 @login_required
@@ -514,8 +555,8 @@ def get_notifications(user_id):
         abort(403)
     if user_id == current_user.id:
         return redirect(url_for('notifications'))
-    target_user = User.query.get_or_404(user_id)
-    return render_template('notifications.html', notifications=target_user.notifications, user_id=user_id)
+    notifications = Notification.query.filter_by(user_id=user_id).order_by(Notification.created_at.desc()).all()
+    return render_template('notifications.html', notifications=notifications, user_id=user_id, root_user=ROOT_USER)
 
 @app.route('/send_notification/<int:user_id>', methods=['POST'])
 @login_required
@@ -580,17 +621,17 @@ def clear_notifications(user_id):
 @app.errorhandler(429)
 def ratelimit_error(e):
     return render_template('rate_limit.html', 
-                         message="请求过于频繁，请稍后再试"), 429
+                         message="请求过于频繁，请稍后再试", root_user=ROOT_USER), 429
 
 @app.errorhandler(400)
 def bad_request(e):
     return render_template('rate_limit.html', 
-                         message="请求无效"), 400
+                         message="请求无效", root_user=ROOT_USER), 400
 
 @app.errorhandler(404)
 def error404(e):
     return render_template('rate_limit.html', 
-                         message="你所访问的页面不存在或已隐藏"), 404
+                         message="你所访问的页面不存在或已隐藏", root_user=ROOT_USER), 404
 
 if __name__ == '__main__':
     with app.app_context():
