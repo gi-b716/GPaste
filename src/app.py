@@ -163,6 +163,12 @@ def register():
         db.session.add(user)
         db.session.commit()
         flash('注册成功，请登录', 'success')
+        notification = Notification(
+            user_id=user.id,
+            message=f'欢迎使用剪贴板，请阅读 “System: 新用户必读”，可直接在上方跳转栏输入“System: 新用户必读”查看。'
+        )
+        db.session.add(notification)
+        db.session.commit()
         logger.info("User {} registered".format(user.username))
         return redirect(url_for('login'))
     return render_template('register.html', form=form)
@@ -234,7 +240,10 @@ def edit(uid):
     clipboard = Clipboard.query.filter_by(uid=uid).first_or_404()
     if current_user.id != clipboard.user_id and not current_user.is_admin:
         abort(403)
-    
+
+    if not current_user.id in ROOT_USER:
+        abort(403)
+
     form = ClipboardForm(obj=clipboard)
     if form.validate_on_submit():
         # 更新内容
@@ -263,6 +272,8 @@ def edit(uid):
 def delete(uid):
     clipboard = Clipboard.query.filter_by(uid=uid).first_or_404()
     if current_user.id != clipboard.user_id and not current_user.is_admin:
+        abort(403)
+    if not current_user.id in ROOT_USER:
         abort(403)
     logger.info('User {} deleted clipboard {}'.format(current_user.username, clipboard.uid))
     db.session.delete(clipboard)
