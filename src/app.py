@@ -241,7 +241,7 @@ def edit(uid):
     if current_user.id != clipboard.user_id and not current_user.is_admin:
         abort(403)
 
-    if not current_user.id in ROOT_USER:
+    if not current_user.id in ROOT_USER and clipboard.user_id == SYSTEM_USER:
         abort(403)
 
     form = ClipboardForm(obj=clipboard)
@@ -273,7 +273,7 @@ def delete(uid):
     clipboard = Clipboard.query.filter_by(uid=uid).first_or_404()
     if current_user.id != clipboard.user_id and not current_user.is_admin:
         abort(403)
-    if not current_user.id in ROOT_USER:
+    if not current_user.id in ROOT_USER and clipboard.user_id == SYSTEM_USER:
         abort(403)
     logger.info('User {} deleted clipboard {}'.format(current_user.username, clipboard.uid))
     db.session.delete(clipboard)
