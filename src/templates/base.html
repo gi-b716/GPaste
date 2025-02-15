@@ -31,6 +31,28 @@
         #submit1-b {
             width: 100px;
         }
+        /* for block of numbers */
+        .hljs-ln-numbers {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+
+            text-align: right;
+            color: #ccc;
+            border-right: 1px solid #CCC;
+            vertical-align: top;
+            padding-right: 50px;
+
+            /* your custom style here */
+        }
+
+        /* for block of code */
+        .hljs-ln-code {
+            padding-left: 20px;
+        }
     </style>
     {{ moment.include_moment() }}
     {{ moment.locale(auto_detect=True) }}
@@ -82,11 +104,12 @@
     <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.4.0/purify.min.js"></script> -->
     <script src="/static/marked.min.js"></script>
     <script src="/static/highlight.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.js"></script>
+    <script src="/static/highlightjs-line-numbers.min.js"></script>
+    <link rel="stylesheet" href="/static/katex.min.css">
+    <script src="/static/katex.min.js"></script>
     <script src="/static/auto-render.min.js"></script>
     <script src="/static/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js"></script> -->
     <!-- 新增：跳转剪贴板的 JavaScript 函数 -->
     <script>
         function gotoClipboard(event) {
@@ -96,6 +119,7 @@
                 window.location.href = `/clip/${clipboardId}`; // 跳转到剪贴板页面
             }
         }
+        hljs.initLineNumbersOnLoad();
     </script>
 </body>
 </html>

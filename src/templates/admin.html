@@ -31,6 +31,10 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-danger">删除所有通知</button>
             </form>
+            <form action="{{ url_for('delete_all_readed_notifications') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-danger">删除所有已读通知</button>
+            </form>
         </div>
     </div>
 </div>
@@ -50,6 +54,7 @@
                 </thead>
                 <tbody>
                     {% for clip in clipboards %}
+                    {% if not (clip.owner.id == SYSTEM_USER and not clip.is_public) %}
                     <tr>
                         <td><a href="{{ url_for('view_clip', uid=clip.uid) }}">{{ clip.uid }}</a></td>
                         <td>{{ clip.owner.username }}</td>
@@ -58,6 +63,7 @@
                             <a href="{{ url_for('delete', uid=clip.uid) }}" class="btn btn-sm btn-danger">删除</a>
                         </td>
                     </tr>
+                    {% endif %}
                     {% endfor %}
                 </tbody>
             </table>

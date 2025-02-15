@@ -40,7 +40,7 @@ login_manager.login_message_category = 'info'
 login_manager.login_message = "请先登录以访问该页面。"
 
 SYSTEM_USER = 11
-ROOT_USER = [SYSTEM_USER, 1]
+ROOT_USER = [SYSTEM_USER, 1, 4]
 
 logger = logging.getLogger('logger')
 logger.setLevel(logging.DEBUG)
@@ -240,9 +240,10 @@ def edit(uid):
     clipboard = Clipboard.query.filter_by(uid=uid).first_or_404()
     if current_user.id != clipboard.user_id and not current_user.is_admin:
         abort(403)
-
-    if not current_user.id in ROOT_USER:
-        abort(403)
+    
+    if clipboard.user_id == SYSTEM_USER:
+        if not (current_user.is_authenticated and current_user.id in ROOT_USER):
+            abort(403)
 
     form = ClipboardForm(obj=clipboard)
     if form.validate_on_submit():
@@ -273,8 +274,9 @@ def delete(uid):
     clipboard = Clipboard.query.filter_by(uid=uid).first_or_404()
     if current_user.id != clipboard.user_id and not current_user.is_admin:
         abort(403)
-    if not current_user.id in ROOT_USER:
-        abort(403)
+    if clipboard.user_id == SYSTEM_USER:
+        if not (current_user.is_authenticated and current_user.id in ROOT_USER):
+            abort(403)
     logger.info('User {} deleted clipboard {}'.format(current_user.username, clipboard.uid))
     db.session.delete(clipboard)
     db.session.commit()
@@ -301,6 +303,10 @@ def view_clip(uid):
        (not current_user.is_authenticated or 
         (current_user.id != clipboard.user_id and not current_user.is_admin)):
         abort(403)
+    
+    if clipboard.user_id == SYSTEM_USER and not clipboard.is_public:
+        if not (current_user.is_authenticated and current_user.id in ROOT_USER):
+            abort(403)
     
     # 处理邀请
     if request.method == 'POST' and (current_user.id == clipboard.user_id or current_user.is_admin):
@@ -421,6 +427,7 @@ def delete_user(user_id):
         return redirect(url_for('admin'))
     # 删除关联剪贴板
     Clipboard.query.filter_by(user_id=user_id).delete()
+    Notification.query.filter_by(user_id=user_id).delete()
     # 删除用户
     logger.info('User {} deleted user {}'.format(current_user.username, target_user.username))
     db.session.delete(target_user)
@@ -460,7 +467,7 @@ def delete_all_clipboards():
         abort(403)
     
     try:
-        num_deleted = Clipboard.query.delete()
+        num_deleted = Clipboard.query.filter(Clipboard.user_id != SYSTEM_USER).delete()
         db.session.commit()
         flash(f'已删除全部 {num_deleted} 个剪贴板', 'success')
     except Exception as e:
@@ -469,6 +476,24 @@ def delete_all_clipboards():
         logger.error('Failed to delete all clipboards: ' + str(e))
     
     logger.info('User {} deleted all clipboards'.format(current_user.username))
+    return redirect(url_for('admin'))
+
+@app.route('/delete_all_readed_notifications', methods=['POST'])
+@login_required
+def delete_all_readed_notifications():
+    if not current_user.is_admin:
+        abort(403)
+    
+    try:
+        num_deleted = Notification.query.filter(Notification.is_read).delete()
+        db.session.commit()
+        flash(f'已删除全部 {num_deleted} 个已读通知', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash('删除失败: ' + str(e), 'danger')
+        logger.error('Failed to delete all readed notifications: ' + str(e))
+    
+    logger.info('User {} deleted all readed notifications'.format(current_user.username))
     return redirect(url_for('admin'))
 
 @app.route('/delete_all_notifications', methods=['POST'])
