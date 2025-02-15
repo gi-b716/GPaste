@@ -264,6 +264,8 @@ def edit(uid):
         
         # 更新备注
         clipboard.note = request.form.get('note', '').strip()
+        if clipboard.note == "None":
+            clipboard.note = ""
         
         # 管理员可以修改 UID
         if current_user.is_admin:
