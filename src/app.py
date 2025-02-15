@@ -64,7 +64,6 @@ class User(UserMixin, db.Model):
     blacklist = db.Column(db.Text, default='')  # 黑名单用户ID列表，用逗号分隔
     whitelist = db.Column(db.Text, default='')  # 白名单用户ID列表，用逗号分隔
     notifications = db.relationship('Notification', backref='user', lazy="dynamic")  # 通知
-    
 
 class Clipboard(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -74,6 +73,7 @@ class Clipboard(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    note = db.Column(db.Text, default='')
 
 class Notification(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -261,6 +261,9 @@ def edit(uid):
         # 更新内容
         clipboard.content = form.content.data
         clipboard.is_public = form.is_public.data
+        
+        # 更新备注
+        clipboard.note = request.form.get('note', '').strip()
         
         # 管理员可以修改 UID
         if current_user.is_admin:

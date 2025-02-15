@@ -17,13 +17,14 @@
                         {{ form.is_public(class="form-check-input") }}
                         {{ form.is_public.label(class="form-check-label") }}
                     </div>
-                    
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-3">
-                        <a href="{{ url_for('view_clip', uid=clipboard.uid) }}" class="btn btn-secondary">取消</a>
-                        <button type="submit" class="btn btn-primary">保存</button>
+
+                    <!-- 新增：备注输入框 -->
+                    <div class="mb-3">
+                        <label for="note" class="form-label">备注</label>
+                        <textarea id="note" name="note" class="form-control" rows="3">{{ clipboard.note if clipboard else '' }}</textarea>
                     </div>
 
-                    <!-- 新增：管理员修改 UID -->
+                    <!-- 管理员修改 UID -->
                     {% if current_user.is_admin %}
                     <div class="mb-3">
                         <label for="uid" class="form-label">剪贴板 UID</label>
@@ -31,6 +32,11 @@
                         <small class="form-text text-muted">仅管理员可修改 UID</small>
                     </div>
                     {% endif %}
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-3">
+                        <a href="{{ url_for('view_clip', uid=clipboard.uid) }}" class="btn btn-secondary">取消</a>
+                        <button type="submit" class="btn btn-primary">保存</button>
+                    </div>
                 </div>
             </form>
         </div>
