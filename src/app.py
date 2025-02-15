@@ -8,6 +8,7 @@ from flask_wtf.csrf import CSRFProtect
 from flask_moment import Moment
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_migrate import Migrate
 import logging, time
 from wtforms import StringField, PasswordField, TextAreaField, BooleanField, SelectField
 from wtforms.validators import DataRequired, Length
@@ -39,8 +40,9 @@ login_manager.login_view = 'login'
 login_manager.login_message_category = 'info'
 login_manager.login_message = "请先登录以访问该页面。"
 
+migrate = Migrate(app, db)
+
 SYSTEM_USER = 11
-ROOT_USER = [SYSTEM_USER, 1, 4]
 
 logger = logging.getLogger('logger')
 logger.setLevel(logging.DEBUG)
@@ -62,6 +64,7 @@ class User(UserMixin, db.Model):
     blacklist = db.Column(db.Text, default='')  # 黑名单用户ID列表，用逗号分隔
     whitelist = db.Column(db.Text, default='')  # 白名单用户ID列表，用逗号分隔
     notifications = db.relationship('Notification', backref='user', lazy="dynamic")  # 通知
+    
 
 class Clipboard(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -117,15 +120,27 @@ def index():
 @login_required
 def dashboard():
     clipboards = Clipboard.query.filter_by(user_id=current_user.id).order_by(Clipboard.created_at.desc()).all()
-    return render_template('dashboard.html', clipboards=clipboards, system=False, root_user=ROOT_USER)
+    return render_template('dashboard.html', clipboards=clipboards, system=False, user_name="我")
 
 @app.route('/dashboard/system')
 @login_required
 def dashboard_system():
-    if current_user.id not in ROOT_USER:
+    if not current_user.is_admin:
         abort(403)
     clipboards = Clipboard.query.filter_by(user_id=SYSTEM_USER).order_by(Clipboard.created_at.desc()).all()
-    return render_template('dashboard.html', clipboards=clipboards, system=True, root_user=ROOT_USER)
+    return render_template('dashboard.html', clipboards=clipboards, system=True, user_name="")
+
+@app.route('/dashboard/<int:user_id>')
+@login_required
+def dashboard_user(user_id):
+    if user_id == current_user.id:
+        return redirect(url_for('dashboard'))
+    if not current_user.is_admin:
+        abort(403)
+    if user_id == SYSTEM_USER:
+        return redirect(url_for('dashboard_system'))
+    clipboards = Clipboard.query.filter_by(user_id=user_id).order_by(Clipboard.created_at.desc()).all()
+    return render_template('dashboard.html', clipboards=clipboards, system=False, user_name=User.query.get(user_id).username)
 
 @app.route('/login', methods=['GET', 'POST'])
 @limiter.limit("60 per minute")
@@ -204,12 +219,12 @@ def create():
         db.session.commit()
         logger.info('User {} created clipboard {}'.format(current_user.username, new_clip.uid))
         return redirect(url_for('view_clip', uid=new_clip.uid))
-    return render_template('edit.html', form=form, clipboard=form, root_user=ROOT_USER)
+    return render_template('edit.html', form=form, clipboard=form)
 
 @app.route('/create/system', methods=['GET', 'POST'])
 @login_required
 def create_system():
-    if current_user.id not in ROOT_USER:
+    if not current_user.is_admin:
         abort(403)
     form = ClipboardForm()
     if form.validate_on_submit():
@@ -232,7 +247,7 @@ def create_system():
         db.session.commit()
         logger.info('User {} created clipboard {} for system'.format(current_user.username, new_clip.uid))
         return redirect(url_for('view_clip', uid=new_clip.uid))
-    return render_template('edit.html', form=form, clipboard=form, root_user=ROOT_USER)
+    return render_template('edit.html', form=form, clipboard=form)
 
 @app.route('/edit/<uid>', methods=['GET', 'POST'])
 @login_required
@@ -240,10 +255,6 @@ def edit(uid):
     clipboard = Clipboard.query.filter_by(uid=uid).first_or_404()
     if current_user.id != clipboard.user_id and not current_user.is_admin:
         abort(403)
-    
-    if clipboard.user_id == SYSTEM_USER:
-        if not (current_user.is_authenticated and current_user.id in ROOT_USER):
-            abort(403)
 
     form = ClipboardForm(obj=clipboard)
     if form.validate_on_submit():
@@ -266,7 +277,7 @@ def edit(uid):
         flash('剪贴板已更新', 'success')
         logger.info('User {} edited clipboard {}'.format(current_user.username, clipboard.uid))
         return redirect(url_for('view_clip', uid=clipboard.uid))
-    return render_template('edit.html', form=form, clipboard=clipboard, root_user=ROOT_USER)
+    return render_template('edit.html', form=form, clipboard=clipboard)
 
 @app.route('/delete/<uid>', methods=['GET', 'POST'])
 @login_required
@@ -274,9 +285,6 @@ def delete(uid):
     clipboard = Clipboard.query.filter_by(uid=uid).first_or_404()
     if current_user.id != clipboard.user_id and not current_user.is_admin:
         abort(403)
-    if clipboard.user_id == SYSTEM_USER:
-        if not (current_user.is_authenticated and current_user.id in ROOT_USER):
-            abort(403)
     logger.info('User {} deleted clipboard {}'.format(current_user.username, clipboard.uid))
     db.session.delete(clipboard)
     db.session.commit()
@@ -303,10 +311,6 @@ def view_clip(uid):
        (not current_user.is_authenticated or 
         (current_user.id != clipboard.user_id and not current_user.is_admin)):
         abort(403)
-    
-    if clipboard.user_id == SYSTEM_USER and not clipboard.is_public:
-        if not (current_user.is_authenticated and current_user.id in ROOT_USER):
-            abort(403)
     
     # 处理邀请
     if request.method == 'POST' and (current_user.id == clipboard.user_id or current_user.is_admin):
@@ -335,7 +339,7 @@ def view_clip(uid):
                          clipboard=clipboard,
                          is_owner=current_user.is_authenticated and 
                                   (current_user.id == clipboard.user_id or 
-                                   current_user.is_admin), root_user=ROOT_USER)
+                                   current_user.is_admin))
 
 @app.route('/admin')
 @login_required
@@ -345,7 +349,7 @@ def admin():
     clipboards = Clipboard.query.all()
     users = User.query.all()
     notifications = Notification.query.all()
-    return render_template('admin.html', clipboards=clipboards, users=users, notifications=notifications, SYSTEM_USER=SYSTEM_USER, root_user=ROOT_USER)
+    return render_template('admin.html', clipboards=clipboards, users=users, notifications=notifications, SYSTEM_USER=SYSTEM_USER)
 
 @app.route('/set_admin/<int:user_id>', methods=['POST'])
 @login_required
@@ -413,7 +417,7 @@ def profile():
     form.blacklist.data = ', '.join([User.query.get(int(id)).username for id in current_user.blacklist.split(',') if id])
     form.whitelist.data = ', '.join([User.query.get(int(id)).username for id in current_user.whitelist.split(',') if id])
     
-    return render_template('profile.html', form=form, root_user=ROOT_USER)
+    return render_template('profile.html', form=form)
 
 @app.route('/delete_user/<int:user_id>', methods=['POST'])
 @login_required
@@ -422,9 +426,6 @@ def delete_user(user_id):
     # 权限验证
     if not (current_user.is_admin or current_user.id == user_id):
         abort(403)
-    if user_id in ROOT_USER and user_id != current_user.id:
-        flash('无法删除此用户', 'danger')
-        return redirect(url_for('admin'))
     # 删除关联剪贴板
     Clipboard.query.filter_by(user_id=user_id).delete()
     Notification.query.filter_by(user_id=user_id).delete()
@@ -450,12 +451,9 @@ def toggle_admin(user_id):
     if user.id == current_user.id:
         flash('不能修改自己的管理员状态', 'danger')
     else:
-        if user.id in ROOT_USER:
-            flash('无法修改此用户的管理员状态', 'danger')
-        else:
-            user.is_admin = not user.is_admin
-            db.session.commit()
-            flash(f'已{"取消" if not user.is_admin else "设置"} {user.username} 的管理员权限', 'success')
+        user.is_admin = not user.is_admin
+        db.session.commit()
+        flash(f'已{"取消" if not user.is_admin else "设置"} {user.username} 的管理员权限', 'success')
     
     logger.info('User {} toggled admin status of {}'.format(current_user.username, user.username))
     return redirect(url_for('admin'))
@@ -520,10 +518,6 @@ def edit_user(user_id):
     if not current_user.is_admin:
         abort(403)
     
-    if user_id in ROOT_USER and user_id != current_user.id:
-        flash('无法编辑此用户', 'danger')
-        return redirect(url_for('admin'))
-    
     target_user = User.query.get_or_404(user_id)
     form = ProfileForm(obj=target_user)
     
@@ -572,7 +566,7 @@ def edit_user(user_id):
     form.blacklist.data = ', '.join([User.query.get(int(id)).username for id in target_user.blacklist.split(',') if id])
     form.whitelist.data = ', '.join([User.query.get(int(id)).username for id in target_user.whitelist.split(',') if id])
     
-    return render_template('edit_user.html', form=form, target_user=target_user, root_user=ROOT_USER)
+    return render_template('edit_user.html', form=form, target_user=target_user)
 
 @app.route('/notifications')
 @login_required
@@ -582,7 +576,7 @@ def notifications():
         notification.is_read = True
     db.session.commit()
     notifications = Notification.query.filter_by(user_id=current_user.id).order_by(Notification.created_at.desc()).all()
-    return render_template('notifications.html', notifications=notifications, user_id=current_user.id, root_user=ROOT_USER)
+    return render_template('notifications.html', notifications=notifications, user_id=current_user.id, tag="")
 
 @app.route('/notifications/<int:user_id>')
 @login_required
@@ -592,7 +586,7 @@ def get_notifications(user_id):
     if user_id == current_user.id:
         return redirect(url_for('notifications'))
     notifications = Notification.query.filter_by(user_id=user_id).order_by(Notification.created_at.desc()).all()
-    return render_template('notifications.html', notifications=notifications, user_id=user_id, root_user=ROOT_USER)
+    return render_template('notifications.html', notifications=notifications, user_id=user_id, tag="{0}的".format(User.query.get(user_id).username))
 
 @app.route('/send_notification/<int:user_id>', methods=['POST'])
 @login_required
@@ -644,9 +638,6 @@ def send_global_notification():
 def clear_notifications(user_id):
     if not current_user.is_admin and current_user.id != user_id:
         abort(403)
-    if user_id != current_user.id and user_id in ROOT_USER:
-        flash('无法清空此用户的通知', 'danger')
-        return redirect(url_for('get_notifications', user_id=user_id))
     # 删除当前用户的所有通知
     Notification.query.filter_by(user_id=user_id).delete()
     db.session.commit()
@@ -657,23 +648,22 @@ def clear_notifications(user_id):
 @app.errorhandler(429)
 def ratelimit_error(e):
     return render_template('rate_limit.html', 
-                         message="请求过于频繁，请稍后再试", root_user=ROOT_USER), 429
+                         message="请求过于频繁，请稍后再试"), 429
 
 @app.errorhandler(400)
 def bad_request(e):
     return render_template('rate_limit.html', 
-                         message="请求无效", root_user=ROOT_USER), 400
+                         message="请求无效"), 400
+
+@app.errorhandler(403)
+def error403(e):
+    return render_template('rate_limit.html', 
+                         message="你无法访问此页面"), 404
 
 @app.errorhandler(404)
 def error404(e):
     return render_template('rate_limit.html', 
-                         message="你所访问的页面不存在或已隐藏", root_user=ROOT_USER), 404
+                         message="你所访问的页面不存在或已隐藏"), 404
 
 if __name__ == '__main__':
-    with app.app_context():
-        for root_user in ROOT_USER:
-            user = User.query.get(root_user)
-            if user:
-                user.is_admin = True
-                db.session.commit()
     app.run(host='0.0.0.0', debug=True)

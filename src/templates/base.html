@@ -77,8 +77,6 @@
                     </a>
                     {% if current_user.is_admin %}
                         <a class="nav-link" href="{{ url_for('admin') }}">管理</a>
-                    {% endif %}
-                    {% if current_user.id in root_user %}
                         <a class="nav-link" href="{{ url_for('dashboard_system') }}">System</a>
                     {% endif %}
                     <a class="nav-link" href="{{ url_for('profile') }}">{{ current_user.username }}</a>

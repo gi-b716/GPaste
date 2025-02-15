@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container">
-    <h2>通知</h2>
+    <h2>{{ tag }}通知</h2>
     <form action="{{ url_for('clear_notifications', user_id=user_id) }}" method="POST" class="mb-3">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn-danger">清空所有通知</button>

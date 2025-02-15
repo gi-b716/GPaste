@@ -117,6 +117,9 @@
                             <!-- 新增：查看用户通知 -->
                             <a href="{{ url_for('get_notifications', user_id=user.id) }}" 
                                class="btn btn-sm btn-outline-info">查看通知</a>
+                            <!-- 新增：查看用户通知 -->
+                            <a href="{{ url_for('dashboard_user', user_id=user.id) }}" 
+                               class="btn btn-sm btn-outline-info">查看剪贴板</a>
                         </div>
                     </td>
                 </tr>
