@@ -3,11 +3,10 @@
 {% block content %}
 {% if system %}
 <h2>系统剪贴板</h2>
-<a href="{{ url_for('create_system') }}" class="btn btn-primary mb-3">新建</a>
 {% else %}
 <h2>{{ user_name }}的剪贴板</h2>
-<a href="{{ url_for('create') }}" class="btn btn-primary mb-3">新建</a>
 {% endif %}
+<a href="{{ url_for('create_user', user_id=user_id) }}" class="btn btn-primary mb-3">新建</a>
 {% for clip in clipboards %}
 <div class="card clipboard-card">
     <div class="card-body">

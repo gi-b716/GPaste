@@ -120,7 +120,7 @@ def index():
 @login_required
 def dashboard():
     clipboards = Clipboard.query.filter_by(user_id=current_user.id).order_by(Clipboard.created_at.desc()).all()
-    return render_template('dashboard.html', clipboards=clipboards, system=False, user_name="我")
+    return render_template('dashboard.html', clipboards=clipboards, system=False, user_name="我", user_id=current_user.id)
 
 @app.route('/dashboard/system')
 @login_required
@@ -128,19 +128,21 @@ def dashboard_system():
     if not current_user.is_admin:
         abort(403)
     clipboards = Clipboard.query.filter_by(user_id=SYSTEM_USER).order_by(Clipboard.created_at.desc()).all()
-    return render_template('dashboard.html', clipboards=clipboards, system=True, user_name="")
+    return render_template('dashboard.html', clipboards=clipboards, system=True, user_name="", user_id=SYSTEM_USER)
 
 @app.route('/dashboard/<int:user_id>')
 @login_required
 def dashboard_user(user_id):
     if user_id == current_user.id:
         return redirect(url_for('dashboard'))
+    if user_id == SYSTEM_USER:
+        return redirect(url_for('dashboard_system'))
     if not current_user.is_admin:
         abort(403)
     if user_id == SYSTEM_USER:
         return redirect(url_for('dashboard_system'))
     clipboards = Clipboard.query.filter_by(user_id=user_id).order_by(Clipboard.created_at.desc()).all()
-    return render_template('dashboard.html', clipboards=clipboards, system=False, user_name=User.query.get(user_id).username)
+    return render_template('dashboard.html', clipboards=clipboards, system=False, user_name=User.query.get(user_id).username, user_id=user_id)
 
 @app.route('/login', methods=['GET', 'POST'])
 @limiter.limit("60 per minute")
@@ -206,6 +208,9 @@ def create():
             user_id=current_user.id,
             is_public=form.is_public.data
         )
+        new_clip.note = request.form.get('note', '').strip()
+        if new_clip.note == "None":
+            new_clip.note = ""
         # 管理员可以修改 UID
         if current_user.is_admin:
             new_uid = request.form.get('uid')
@@ -234,6 +239,9 @@ def create_system():
             user_id=SYSTEM_USER,
             is_public=form.is_public.data
         )
+        new_clip.note = request.form.get('note', '').strip()
+        if new_clip.note == "None":
+            new_clip.note = ""
         # 管理员可以修改 UID
         if current_user.is_admin:
             new_uid = request.form.get('uid')
@@ -246,6 +254,41 @@ def create_system():
         db.session.add(new_clip)
         db.session.commit()
         logger.info('User {} created clipboard {} for system'.format(current_user.username, new_clip.uid))
+        return redirect(url_for('view_clip', uid=new_clip.uid))
+    return render_template('edit.html', form=form, clipboard=form)
+
+@app.route('/create/<int:user_id>', methods=['GET', 'POST'])
+@login_required
+def create_user(user_id):
+    if user_id == current_user.id:
+        return redirect(url_for("create"))
+    if user_id == SYSTEM_USER:
+        return redirect(url_for("create_system"))
+    if not current_user.is_admin:
+        abort(403)
+    form = ClipboardForm()
+    if form.validate_on_submit():
+        new_clip = Clipboard(
+            uid=str(uuid.uuid4()),
+            content=form.content.data,
+            user_id=user_id,
+            is_public=form.is_public.data
+        )
+        new_clip.note = request.form.get('note', '').strip()
+        if new_clip.note == "None":
+            new_clip.note = ""
+        # 管理员可以修改 UID
+        if current_user.is_admin:
+            new_uid = request.form.get('uid')
+            if new_uid and new_uid != new_clip.uid:
+                # 检查新 UID 是否已存在
+                if new_clip.query.filter_by(uid=new_uid).first():
+                    flash('该 UID 已存在，请使用其他 UID', 'danger')
+                else:
+                    new_clip.uid = new_uid
+        db.session.add(new_clip)
+        db.session.commit()
+        logger.info('User {} created clipboard {} for {}'.format(current_user.username, new_clip.uid, User.query.get(user_id).username))
         return redirect(url_for('view_clip', uid=new_clip.uid))
     return render_template('edit.html', form=form, clipboard=form)
 
