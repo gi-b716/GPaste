@@ -16,12 +16,15 @@ import uuid
 import os
 from datetime import datetime
 
+CONTENT_LENGTH_MB = 64
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.urandom(24)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://{0}:{1}@localhost/clipboard_db'.format(
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://{0}:{1}@localhost/test'.format(
     os.environ['SQL_USERNAME'], os.environ['SQL_PASSWORD']
 )
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['MAX_CONTENT_LENGTH'] = CONTENT_LENGTH_MB * 1024 * 1024
 
 limiter = Limiter(
     app=app,
@@ -68,7 +71,8 @@ class User(UserMixin, db.Model):
 class Clipboard(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     uid = db.Column(db.String(36), unique=True)
-    content = db.Column(db.Text)
+    content = db.Column(db.Text(16777215))
+    # db.Text(4294967295)
     is_public = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
@@ -706,12 +710,17 @@ def bad_request(e):
 @app.errorhandler(403)
 def error403(e):
     return render_template('rate_limit.html', 
-                         message="你无法访问此页面"), 404
+                         message="你无法访问此页面"), 403
 
 @app.errorhandler(404)
 def error404(e):
     return render_template('rate_limit.html', 
                          message="你所访问的页面不存在或已隐藏"), 404
+
+@app.errorhandler(413)
+def error413(e):
+    return render_template('rate_limit.html', 
+                         message="发送的数据包过大"), 413
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True)
