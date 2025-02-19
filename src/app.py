@@ -20,7 +20,7 @@ CONTENT_LENGTH_MB = 64
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.urandom(24)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://{0}:{1}@localhost/test'.format(
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://{0}:{1}@localhost/clipboard_db'.format(
     os.environ['SQL_USERNAME'], os.environ['SQL_PASSWORD']
 )
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
