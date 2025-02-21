@@ -14,9 +14,15 @@
         <div class="card-body">
             <div class="row mb-4">
                 <div class="col-md-6">
+                    {% if is_owner %}
+                    <small class="text-muted">
+                        作者：<a href="{{ url_for('dashboard_user', user_id=clipboard.owner.id) }}">{{ clipboard.owner.username }}</a>
+                    </small>
+                    {% else %}
                     <small class="text-muted">
                         作者：{{ clipboard.owner.username }}
                     </small>
+                    {% endif %}
                 </div>
                 <div class="col-md-6 text-end">
                     <small class="text-muted">
@@ -25,7 +31,7 @@
                 </div>
             </div>
             
-            {% if clipboard.note %}
+            {% if clipboard.note and is_owner %}
             <div class="mt-2">
                 <blockquote>{{ clipboard.note }}</blockquote>
             </div>

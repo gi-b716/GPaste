@@ -7,10 +7,24 @@
             const content = markdownContainer.textContent;
 
             // 1. 消毒内容
+            // const cleanContent = DOMPurify.sanitize(content);
             const cleanContent = content;
 
-            // 2. 转换 Markdown
-            const htmlContent = marked.parse(cleanContent, {
+            // 2. 手动处理代码块
+            // console.log(cleanContent);
+            const processedContent = cleanContent;
+                // .split('\n')
+                // .map(line => {
+                //     // 如果行首有 4 个空格或 1 个 Tab，移除它们
+                //     if (line.startsWith('    ') || line.startsWith('\t')) {
+                //         return line.trimStart();
+                //     }
+                //     return line;
+                // })
+                // .join('\n');
+
+            // 3. 转换 Markdown
+            const htmlContent = marked.parse(processedContent, {
                 breaks: true,
                 highlight: function(code, lang) {
                     const validLang = hljs.getLanguage(lang) ? lang : 'plaintext';
@@ -20,10 +34,10 @@
                 gfm: true,       // 启用 GitHub Flavored Markdown
             });
 
-            // 3. 更新内容
+            // 4. 更新内容
             markdownContainer.innerHTML = htmlContent;
 
-            // 4. 渲染数学公式
+            // 5. 渲染数学公式
             if (window.renderMathInElement) {
                 renderMathInElement(markdownContainer, {
                     delimiters: [
@@ -36,59 +50,10 @@
                 console.warn('KaTeX 的 auto-render 扩展未加载');
             }
 
-            // 5. 高亮代码块并添加复制按钮
+            // 6. 高亮代码块
             document.querySelectorAll('pre code').forEach((block) => {
                 hljs.highlightElement(block);
-
-                // 创建复制按钮
-                const copyButton = document.createElement('button');
-                copyButton.className = 'btn btn-sm btn-outline-secondary copy-button';
-                copyButton.textContent = '复制';
-                copyButton.style.position = 'absolute';
-                copyButton.style.top = '10px';
-                copyButton.style.right = '10px';
-
-                // 添加点击事件
-                copyButton.addEventListener('click', () => {
-                    // 获取代码块的原始内容（包含换行符）
-                    const code = block.innerText || block.textContent;
-
-                    // 去除多余的空行和制表符
-                    const cleanedCode = code
-                        .split('\n') // 按行分割
-                        .map(line => line.trimEnd()) // 去除每行末尾的空白字符
-                        .filter(line => line.length > 0) // 去除空行
-                        .join('\n'); // 重新拼接为字符串
-
-                    if (navigator.clipboard && window.isSecureContext) {
-                        navigator.clipboard.writeText(cleanedCode).then(() => {
-                            copyButton.textContent = '已复制';
-                            setTimeout(() => {
-                                copyButton.textContent = '复制';
-                            }, 2000);
-                        });
-                    } else {
-                        const textArea = document.createElement('textarea');
-                        textArea.value = cleanedCode;
-                        document.body.appendChild(textArea);
-                        textArea.select();
-                        document.execCommand('copy');
-                        document.body.removeChild(textArea);
-                        copyButton.textContent = '已复制';
-                        setTimeout(() => {
-                            copyButton.textContent = '复制';
-                        }, 2000);
-                    }
-                });
-
-                // 将按钮添加到代码块容器
-                const pre = block.parentElement;
-                pre.style.position = 'relative';
-                pre.appendChild(copyButton);
             });
-
-            // 6. 初始化行号
-            hljs.initLineNumbersOnLoad();
         } catch (error) {
             console.error('渲染失败:', error);
         }
