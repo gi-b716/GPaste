@@ -8,3 +8,4 @@ flask_wtf==1.2.2
 flask_migrate==4.1.0
 WTForms==3.2.1
 pymysql==1.1.1
+gevent==24.11.1

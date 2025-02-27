@@ -14,9 +14,15 @@ from wtforms import StringField, PasswordField, TextAreaField, BooleanField, Sel
 from wtforms.validators import DataRequired, Length
 import uuid
 import os
+from gevent import pywsgi
+import warnings
 from datetime import datetime
 
 CONTENT_LENGTH_MB = 64
+DEBUG = False
+PORT = 5000
+
+warnings.filterwarnings('ignore')
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.urandom(24)
@@ -723,4 +729,6 @@ def error413(e):
                          message="发送的数据包过大"), 413
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=True)
+    # app.run(host='0.0.0.0', port=PORT, debug=DEBUG)
+    server = pywsgi.WSGIServer(('0.0.0.0', PORT), app)
+    server.serve_forever()
