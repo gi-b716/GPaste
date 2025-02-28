@@ -16,7 +16,7 @@ import uuid
 import os
 from gevent import pywsgi
 import warnings
-from datetime import datetime, timedelta
+from datetime import datetime
 
 CONTENT_LENGTH_MB = 64
 DEBUG = True
