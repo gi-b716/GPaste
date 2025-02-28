@@ -16,10 +16,10 @@ import uuid
 import os
 from gevent import pywsgi
 import warnings
-from datetime import datetime
+from datetime import datetime, timedelta
 
 CONTENT_LENGTH_MB = 64
-DEBUG = False
+DEBUG = True
 PORT = 5000
 
 warnings.filterwarnings('ignore')
@@ -404,10 +404,29 @@ def view_clip(uid):
 def admin():
     if not current_user.is_admin:
         abort(403)
-    clipboards = Clipboard.query.all()
-    users = User.query.all()
-    notifications = Notification.query.all()
-    return render_template('admin.html', clipboards=clipboards, users=users, notifications=notifications, SYSTEM_USER=SYSTEM_USER)
+    
+    # 基础统计
+    users_count = User.query.filter(User.id != SYSTEM_USER).count()
+    clipboards_count = Clipboard.query.count()
+    
+    # 今日剪贴板统计
+    today = datetime.today().date()
+    daily_clips = Clipboard.query.filter(db.func.date(Clipboard.created_at) == today).count()
+    
+    # 通知统计
+    notifications_count = Notification.query.count()
+    unread_notifications = Notification.query.filter_by(is_read=False).count()
+    
+    return render_template('admin.html',
+                         clipboards=Clipboard.query.all(),
+                         users=User.query.all(),
+                         notifications=Notification.query.all(),
+                         SYSTEM_USER=SYSTEM_USER,
+                         users_count=users_count,
+                         clipboards_count=clipboards_count,
+                         daily_clips=daily_clips,
+                         notifications_count=notifications_count,
+                         unread_notifications=unread_notifications)
 
 @app.route('/set_admin/<int:user_id>', methods=['POST'])
 @login_required
@@ -729,6 +748,6 @@ def error413(e):
                          message="发送的数据包过大"), 413
 
 if __name__ == '__main__':
-    # app.run(host='0.0.0.0', port=PORT, debug=DEBUG)
-    server = pywsgi.WSGIServer(('0.0.0.0', PORT), app)
-    server.serve_forever()
+    app.run(host='0.0.0.0', port=PORT, debug=DEBUG)
+    # server = pywsgi.WSGIServer(('0.0.0.0', PORT), app)
+    # server.serve_forever()

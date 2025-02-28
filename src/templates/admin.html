@@ -3,6 +3,48 @@
 {% block content %}
 <h2 class="mb-4">管理面板</h2>
 
+<!-- 新增统计面板 -->
+<div class="card mb-4 border-info">
+    <div class="card-header bg-info text-white">系统统计</div>
+    <div class="card-body">
+        <!-- 统计数字 -->
+        <div class="row row-cols-4 g-4">
+            <div class="col">
+                <div class="card h-100 border-primary">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">用户总数</h5>
+                        <p class="display-6 text-primary">{{ users_count }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card h-100 border-success">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">剪贴板总数</h5>
+                        <p class="display-6 text-success">{{ clipboards_count }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card h-100 border-warning">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">今日新增剪贴板</h5>
+                        <p class="display-6 text-warning">{{ daily_clips }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card h-100 border-danger">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">通知</h5>
+                        <p class="display-6 text-danger">{{ unread_notifications }}/{{ notifications_count }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- 新增：全局通知发送 -->
 <div class="card mb-4 border-primary">
     <div class="card-header bg-primary text-white">发送全局通知</div>
