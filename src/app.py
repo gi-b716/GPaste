@@ -20,6 +20,7 @@ from datetime import datetime, timedelta
 
 CONTENT_LENGTH_MB = 64
 DEBUG = True
+WSGI = True
 PORT = 5000
 
 warnings.filterwarnings('ignore')
@@ -748,6 +749,8 @@ def error413(e):
                          message="发送的数据包过大"), 413
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=PORT, debug=DEBUG)
-    # server = pywsgi.WSGIServer(('0.0.0.0', PORT), app)
-    # server.serve_forever()
+    if WSGI:
+        server = pywsgi.WSGIServer(('0.0.0.0', PORT), app)
+        server.serve_forever()
+    else:
+        app.run(host='0.0.0.0', port=PORT, debug=DEBUG)
