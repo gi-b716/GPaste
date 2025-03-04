@@ -22,6 +22,7 @@
                     <div class="mb-3">
                         <label for="note" class="form-label">备注</label>
                         <textarea id="note" name="note" class="form-control" rows="3">{{ clipboard.note if clipboard else '' }}</textarea>
+                        <small class="form-text text-muted">仅自己或管理员可见</small>
                     </div>
 
                     <!-- 管理员修改 UID -->

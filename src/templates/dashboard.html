@@ -6,7 +6,11 @@
 {% else %}
 <h2>{{ user_name }}的剪贴板</h2>
 {% endif %}
+<p>剪贴板总数：{{ user_clip_count }}</p>
 <a href="{{ url_for('create_user', user_id=user_id) }}" class="btn btn-primary mb-3">新建</a>
+{% if system %}
+<a href="{{ url_for('get_notifications', user_id=user_id) }}" class="btn btn-primary mb-3">System 通知</a>
+{% endif %}
 {% for clip in clipboards %}
 <div class="card clipboard-card">
     <div class="card-body">

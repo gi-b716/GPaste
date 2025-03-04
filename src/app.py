@@ -131,7 +131,8 @@ def index():
 @login_required
 def dashboard():
     clipboards = Clipboard.query.filter_by(user_id=current_user.id).order_by(Clipboard.created_at.desc()).all()
-    return render_template('dashboard.html', clipboards=clipboards, system=False, user_name="我", user_id=current_user.id)
+    user_clip_count = Clipboard.query.filter_by(user_id=current_user.id).count()
+    return render_template('dashboard.html', clipboards=clipboards, system=False, user_name="我", user_id=current_user.id, user_clip_count=user_clip_count)
 
 @app.route('/dashboard/system')
 @login_required
@@ -139,21 +140,21 @@ def dashboard_system():
     if not current_user.is_admin:
         abort(403)
     clipboards = Clipboard.query.filter_by(user_id=SYSTEM_USER).order_by(Clipboard.created_at.desc()).all()
-    return render_template('dashboard.html', clipboards=clipboards, system=True, user_name="", user_id=SYSTEM_USER)
+    user_clip_count = Clipboard.query.filter_by(user_id=SYSTEM_USER).count()
+    return render_template('dashboard.html', clipboards=clipboards, system=True, user_name="", user_id=SYSTEM_USER, user_clip_count=user_clip_count)
 
 @app.route('/dashboard/<int:user_id>')
 @login_required
 def dashboard_user(user_id):
     if user_id == current_user.id:
         return redirect(url_for('dashboard'))
-    if user_id == SYSTEM_USER:
-        return redirect(url_for('dashboard_system'))
     if not current_user.is_admin:
         abort(403)
     if user_id == SYSTEM_USER:
         return redirect(url_for('dashboard_system'))
     clipboards = Clipboard.query.filter_by(user_id=user_id).order_by(Clipboard.created_at.desc()).all()
-    return render_template('dashboard.html', clipboards=clipboards, system=False, user_name=User.query.get(user_id).username, user_id=user_id)
+    user_clip_count = Clipboard.query.filter_by(user_id=user_id).count()
+    return render_template('dashboard.html', clipboards=clipboards, system=False, user_name=User.query.get(user_id).username, user_id=user_id, user_clip_count=user_clip_count)
 
 @app.route('/login', methods=['GET', 'POST'])
 @limiter.limit("60 per minute")
@@ -654,7 +655,8 @@ def notifications():
         notification.is_read = True
     db.session.commit()
     notifications = Notification.query.filter_by(user_id=current_user.id).order_by(Notification.created_at.desc()).all()
-    return render_template('notifications.html', notifications=notifications, user_id=current_user.id, tag="")
+    notifications_count = Notification.query.filter_by(user_id=current_user.id).count()
+    return render_template('notifications.html', notifications=notifications, user_id=current_user.id, tag="", notifications_count=notifications_count)
 
 @app.route('/notifications/<int:user_id>')
 @login_required
@@ -664,7 +666,8 @@ def get_notifications(user_id):
     if user_id == current_user.id:
         return redirect(url_for('notifications'))
     notifications = Notification.query.filter_by(user_id=user_id).order_by(Notification.created_at.desc()).all()
-    return render_template('notifications.html', notifications=notifications, user_id=user_id, tag="{0}的".format(User.query.get(user_id).username))
+    notifications_count = Notification.query.filter_by(user_id=user_id).count()
+    return render_template('notifications.html', notifications=notifications, user_id=user_id, tag="{0}的".format(User.query.get(user_id).username), notifications_count=notifications_count)
 
 @app.route('/send_notification/<int:user_id>', methods=['POST'])
 @login_required
@@ -747,6 +750,11 @@ def error404(e):
 def error413(e):
     return render_template('rate_limit.html', 
                          message="发送的数据包过大"), 413
+
+@app.errorhandler(500)
+def error413(e):
+    return render_template('rate_limit.html', 
+                         message="服务器内部错误，请报告至开发者"), 413
 
 if __name__ == '__main__':
     if WSGI:
