@@ -74,6 +74,8 @@ class User(UserMixin, db.Model):
     blacklist = db.Column(db.Text, default='')  # 黑名单用户ID列表，用逗号分隔
     whitelist = db.Column(db.Text, default='')  # 白名单用户ID列表，用逗号分隔
     notifications = db.relationship('Notification', backref='user', lazy="dynamic")  # 通知
+    allow_create = db.Column(db.Boolean, default=True)  # 是否允许创建剪贴板
+    allow_login = db.Column(db.Boolean, default=True)  # 是否允许登录
 
 class Clipboard(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -115,6 +117,8 @@ class ProfileForm(FlaskForm):
     mode = SelectField('模式', choices=[('blacklist', '黑名单模式'), ('whitelist', '白名单模式')])
     blacklist = StringField('黑名单用户（用户名，用逗号分隔）')
     whitelist = StringField('白名单用户（用户名，用逗号分隔）')
+    allow_create = BooleanField('允许创建和修改剪贴板', default=True)
+    allow_login = BooleanField('允许登录', default=True)
 
 # 登录管理
 @login_manager.user_loader
@@ -162,8 +166,8 @@ def login():
     form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
-        if user and user.id == SYSTEM_USER:
-            flash('系统用户无法登录', 'danger')
+        if user and not user.allow_login:
+            flash('该用户无法登录，可能受保护或已经封禁', 'danger')
             return redirect(url_for('login'))
         if user and bcrypt.check_password_hash(user.password, form.password.data):
             login_user(user)
@@ -212,6 +216,9 @@ def logout():
 @app.route('/create', methods=['GET', 'POST'])
 @login_required
 def create():
+    if not current_user.allow_create:
+        flash('你无权创建剪贴板', 'danger')
+        return redirect(url_for('dashboard'))
     form = ClipboardForm()
     if form.validate_on_submit():
         new_clip = Clipboard(
@@ -310,6 +317,10 @@ def edit(uid):
     clipboard = Clipboard.query.filter_by(uid=uid).first_or_404()
     if current_user.id != clipboard.user_id and not current_user.is_admin:
         abort(403)
+    
+    if not current_user.allow_create:
+        flash('你无权编辑剪贴板', 'danger')
+        return redirect(url_for('view_clip', uid=clipboard.uid))
 
     form = ClipboardForm(obj=clipboard)
     if form.validate_on_submit():
@@ -594,6 +605,9 @@ def delete_all_notifications():
 @app.route('/admin/edit_user/<int:user_id>', methods=['GET', 'POST'])
 @login_required
 def edit_user(user_id):
+    if user_id == current_user.id:
+        return redirect(url_for('profile'))
+
     if not current_user.is_admin:
         abort(403)
     
@@ -634,6 +648,9 @@ def edit_user(user_id):
             if user:
                 whitelist_ids.append(str(user.id))
         target_user.whitelist = ','.join(whitelist_ids)
+
+        target_user.allow_create = form.allow_create.data
+        target_user.allow_login = form.allow_login.data
         
         db.session.commit()
         flash('用户信息已更新', 'success')

@@ -40,6 +40,16 @@
                 {{ form.whitelist(class="form-control", placeholder="输入用户名，用逗号分隔") }}
                 <small class="form-text text-muted">白名单模式：仅接受这些用户的邀请</small>
             </div>
+
+            <div class="form-check form-switch mb-3">
+                {{ form.allow_create(class="form-check-input") }}
+                {{ form.allow_create.label(class="form-check-label") }}
+            </div>
+
+            <div class="form-check form-switch mb-3">
+                {{ form.allow_login(class="form-check-input") }}
+                {{ form.allow_login.label(class="form-check-label") }}
+            </div>
             
             <div class="d-grid gap-2">
                 <button type="submit" class="btn btn-primary">保存更改</button>
